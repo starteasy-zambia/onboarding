@@ -52,7 +52,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 
 .btn-wa { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 18px; background: #25D366; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s; box-shadow: 0 10px 26px rgba(37,211,102,.3); margin-top: 12px; }
 .btn-wa:hover { background: #20ba59; transform: translateY(-2px); box-shadow: 0 16px 34px rgba(37,211,102,.45); }
+.btn-wa:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
 .error-msg { background: rgba(184,86,79,.08); border: 1px solid rgba(184,86,79,.3); color: #7C2318; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.success-msg { background: rgba(30,123,60,.08); border: 1px solid rgba(30,123,60,.3); color: #0F5C2A; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
 /* ─── ADMIN PORTAL STYLES ─── */
 .admin-layout { display: flex; min-height: 100vh; background: #F8FAFC; }
@@ -105,17 +107,32 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo } = React;
 
+/* ─── FIREBASE INIT ─── */
+const firebaseConfig = {
+  apiKey: "AIzaSyDdEyxvsd2RjgKVYTGYJfYUB_637lV3n5I",
+  authDomain: "starteasy-zambia.firebaseapp.com",
+  projectId: "starteasy-zambia",
+  storageBucket: "starteasy-zambia.firebasestorage.app",
+  messagingSenderId: "54136399237",
+  appId: "1:54136399237:web:2f9f2d7f86bfdfb4be50ec"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 const WHATSAPP_NUMBER = '260762499581';
 
 /* ═══════════════════════════════════════════════════════════════════
-   PUBLIC ONBOARDING FORM (WITH CONDITIONAL LOGIC)
+   PUBLIC ONBOARDING FORM
    ═══════════════════════════════════════════════════════════════════ */
 function OnboardingForm({ onAdminClick }) {
   const [intent, setIntent] = useState('');
   const [q2Answer, setQ2Answer] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const intentOptions = [
     "I need business or administrative services",
@@ -135,69 +152,91 @@ function OnboardingForm({ onAdminClick }) {
     "Other"
   ];
 
-  // Clear Q2 answer if the intent changes to avoid mismatched data
   const handleIntentSelect = (opt) => {
     setIntent(opt);
     setQ2Answer('');
     setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
 
-    if (!intent) {
-      setError("Please select what brings you to StartEasy.");
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    // Validation
+    if (!intent) return setError("Please select what brings you to StartEasy.");
+    if (!q2Answer) return setError("Please answer the second question.");
+    if (!fullName.trim()) return setError("Please enter your full name.");
+    if (!email.trim() || !email.includes('@')) return setError("Please enter a valid email address.");
+
+    setSubmitting(true);
+
+    try {
+      // 1. Save to Firestore (se_leads)
+      const leadPayload = {
+        name: fullName,
+        email: email,
+        intent: intent,
+        service: q2Answer,
+        business: businessName || '-',
+        details: details || '',
+        status: 'New lead',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      await db.collection('se_leads').add(leadPayload);
+
+      // 2. Log Activity (se_activities)
+      await db.collection('se_activities').add({
+        user: fullName,
+        event: 'onboarding_completed',
+        detail: `Selected ${q2Answer}`,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // 3. Success & Open WhatsApp
+      setSuccess(true);
+      
+      const message = `*STARTEASY ONBOARDING*%0A%0A` +
+        `*Name:* ${fullName}%0A` +
+        `*Email:* ${email}%0A%0A` +
+        `*1. Intent:*%0A${intent}%0A%0A` +
+        `*2. Details:*%0A${q2Answer}%0A%0A` +
+        `*3. Business:*%0A${businessName || 'N/A'}%0A%0A` +
+        `*4. More:*%0A${details || 'N/A'}`;
+
+      setTimeout(() => {
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+        // Reset form
+        setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setBusinessName(''); setDetails('');
+        setSuccess(false);
+        setSubmitting(false);
+      }, 1500);
+
+    } catch (err) {
+      console.error(err);
+      setError("Failed to submit to database. Please try again.");
+      setSubmitting(false);
     }
-    if (!q2Answer) {
-      setError("Please answer the second question.");
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    const message = `*STARTEASY ONBOARDING*%0A%0A` +
-      `*1. What brings you here?*%0A${intent}%0A%0A` +
-      `*2. Details:*%0A${q2Answer}%0A%0A` +
-      `*3. Business/Org Name:*%0A${businessName || 'N/A'}%0A%0A` +
-      `*4. Tell us more:*%0A${details || 'N/A'}`;
-
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
   };
 
-  // ─── CONDITIONAL LOGIC FOR QUESTION 2 ───
   const renderQ2 = () => {
     if (!intent) return null;
-
-    let label = "";
-    let placeholder = "";
-    let isSelect = false;
+    let label = ""; let placeholder = ""; let isSelect = false;
 
     switch (intent) {
       case "I need business or administrative services":
       case "I am an entrepreneur or business owner":
-        label = "Which service interests you most?";
-        isSelect = true;
-        break;
+        label = "Which service interests you most?"; isSelect = true; break;
       case "I want to become a supplier or service partner":
-        label = "What products or services do you supply?";
-        placeholder = "e.g. Fabric, electronics, logistics...";
-        break;
+        label = "What products or services do you supply?"; placeholder = "e.g. Fabric, electronics, logistics..."; break;
       case "I am interested in joining the StartEasy team":
-        label = "What role or expertise are you bringing?";
-        placeholder = "e.g. Finance, Marketing, Admin...";
-        break;
+        label = "What role or expertise are you bringing?"; placeholder = "e.g. Finance, Marketing, Admin..."; break;
       case "I am interested in investment or strategic partnerships":
-        label = "What type of partnership or investment are you looking for?";
-        placeholder = "e.g. Equity investment, joint venture...";
-        break;
+        label = "What type of partnership or investment are you looking for?"; placeholder = "e.g. Equity investment, joint venture..."; break;
       case "I am exploring the platform":
-        label = "What are you looking to explore?";
-        placeholder = "e.g. Just browsing, seeing what you offer...";
-        break;
-      default:
-        label = "Please provide more details";
+        label = "What are you looking to explore?"; placeholder = "e.g. Just browsing, seeing what you offer..."; break;
+      default: label = "Please provide more details";
     }
 
     return (
@@ -206,18 +245,10 @@ function OnboardingForm({ onAdminClick }) {
         {isSelect ? (
           <select className="form-select" value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)}>
             <option value="" disabled>Select a service...</option>
-            {serviceOptions.map((opt, i) => (
-              <option key={i} value={opt}>{opt}</option>
-            ))}
+            {serviceOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
           </select>
         ) : (
-          <input 
-            type="text" 
-            className="form-input" 
-            placeholder={placeholder}
-            value={q2Answer}
-            onChange={(e) => setQ2Answer(e.target.value)}
-          />
+          <input type="text" className="form-input" placeholder={placeholder} value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)} />
         )}
       </div>
     );
@@ -225,7 +256,6 @@ function OnboardingForm({ onAdminClick }) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
       <header className="site-header">
         <div className="header-content">
           <a href="#" className="logo-group">
@@ -252,11 +282,8 @@ function OnboardingForm({ onAdminClick }) {
         </div>
 
         <div className="form-card fadein">
-          {error && (
-            <div className="error-msg">
-              <i className="fas fa-exclamation-circle"></i> {error}
-            </div>
-          )}
+          {error && <div className="error-msg"><i className="fas fa-exclamation-circle"></i> {error}</div>}
+          {success && <div className="success-msg"><i className="fas fa-check-circle"></i> Data saved! Opening WhatsApp...</div>}
 
           <form onSubmit={handleSubmit}>
             
@@ -264,11 +291,7 @@ function OnboardingForm({ onAdminClick }) {
               <label className="form-label">1. What brings you to StartEasy? <span style={{ color: 'var(--red)' }}>*</span></label>
               <div style={{ marginTop: 12 }}>
                 {intentOptions.map((opt, i) => (
-                  <div 
-                    key={i} 
-                    className={`radio-tile ${intent === opt ? 'selected' : ''}`}
-                    onClick={() => handleIntentSelect(opt)}
-                  >
+                  <div key={i} className={`radio-tile ${intent === opt ? 'selected' : ''}`} onClick={() => handleIntentSelect(opt)}>
                     <div className="radio-dot"></div>
                     <div className="radio-text">{opt}</div>
                   </div>
@@ -276,38 +299,34 @@ function OnboardingForm({ onAdminClick }) {
               </div>
             </div>
 
-            {/* Dynamically rendered Question 2 */}
             {renderQ2()}
 
-            <div style={{ marginBottom: 32 }}>
-              <label className="form-label">3. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="e.g. Acme Traders Ltd"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-              />
+            {/* NEW REQUIRED FIELDS FOR CRM */}
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">4. Email Address <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input type="email" className="form-input" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">5. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
+              <input type="text" className="form-input" placeholder="e.g. Acme Traders Ltd" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
             </div>
 
             <div style={{ marginBottom: 32 }}>
-              <label className="form-label">4. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
-              <textarea 
-                className="form-input" 
-                rows={4}
-                placeholder="Anything specific you want us to know?"
-                value={details}
-                onChange={(e) => setDetails(e.target.value)}
-                style={{ resize: 'vertical' }}
-              ></textarea>
+              <label className="form-label">6. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
+              <textarea className="form-input" rows={4} placeholder="Anything specific you want us to know?" value={details} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}></textarea>
             </div>
 
-            <button type="submit" className="btn-wa">
-              <i className="fab fa-whatsapp" style={{ fontSize: 20 }}></i>
-              Submit via WhatsApp
+            <button type="submit" className="btn-wa" disabled={submitting}>
+              {submitting ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fab fa-whatsapp"></i> Save & Connect via WhatsApp</>}
             </button>
             <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(10,31,18,.5)', marginTop: 16 }}>
-              Clicking this will open WhatsApp with your answers pre-filled. <br/> Just tap send to connect with our team.
+              Your details are securely saved to our database and will pre-fill your WhatsApp message.
             </p>
 
           </form>
@@ -318,71 +337,98 @@ function OnboardingForm({ onAdminClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL: User & Lead Intelligence
+   ADMIN PORTAL: User & Lead Intelligence (LIVE FIRESTORE)
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // Mock Data perfectly aligned with your prompt
-  const [leads, setLeads] = useState([
-    { id: '1', name: 'User A', intent: 'I need business or administrative services', service: 'Financial Support', business: 'User A Biz', status: 'New lead', date: Date.now() - 1000*60*60*2 },
-    { id: '2', name: 'User B', intent: 'I am an entrepreneur or business owner', service: 'Business Registration', business: 'User B Biz', status: 'Follow up', date: Date.now() - 1000*60*60*24 },
-    { id: '3', name: 'User C', intent: 'I want to become a supplier or service partner', service: 'Supplier partnership', business: 'User C Biz', status: 'Review', date: Date.now() - 1000*60*60*48 },
-    { id: '4', name: 'User D', intent: 'I am interested in joining the StartEasy team', service: 'Team opportunity', business: '-', status: 'Unqualified', date: Date.now() - 1000*60*60*72 },
-  ]);
+  // Live Data States
+  const [leads, setLeads] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [activities, setActivities] = useState([
-    { id: 'a1', user: 'User A', event: 'onboarding_completed', detail: 'Selected Financial Support', time: Date.now() - 1000*60*60*2 },
-    { id: 'a2', user: 'Anonymous Visitor', event: 'service_viewed', detail: 'Viewed Business Registration (x3)', time: Date.now() - 1000*60*60*3 },
-    { id: 'a3', user: 'User B', event: 'quote_requested', detail: 'Requested quote for Business Reg', time: Date.now() - 1000*60*60*5 },
-    { id: 'a4', user: 'User C', event: 'supplier_application_submitted', detail: 'Applied as supplier', time: Date.now() - 1000*60*60*8 },
-  ]);
+  // Fetch Real Data from Firestore
+  useEffect(() => {
+    const unsubLeads = db.collection('se_leads')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLeads(data);
+      }, err => console.error("Error fetching leads:", err));
 
-  const updateLeadStatus = (id, newStatus) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
+    const unsubActivity = db.collection('se_activities')
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setActivities(data);
+        setLoading(false);
+      }, err => console.error("Error fetching activities:", err));
+
+    return () => { unsubLeads(); unsubActivity(); };
+  }, []);
+
+  // Update Status in Firestore
+  const updateLeadStatus = async (id, newStatus) => {
+    try {
+      await db.collection('se_leads').doc(id).update({ status: newStatus });
+      // Optimistically update UI (Firestore onSnapshot will also catch it)
+      setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
+    } catch (err) {
+      console.error("Error updating status:", err);
+      alert("Failed to update status. Check console.");
+    }
   };
 
-  const simulateNewLead = () => {
-    const names = ['User E', 'User F', 'User G', 'User H'];
+  // Test function to create a lead directly from Admin
+  const simulateNewLead = async () => {
+    const names = ['Test User 1', 'Test User 2', 'Chanda M', 'Grace B'];
     const interests = ['Financial Support', 'Business Registration', 'Supplier partnership', 'Venture Building'];
-    const newLead = {
-      id: Date.now().toString(),
-      name: names[Math.floor(Math.random() * names.length)],
-      intent: 'I am an entrepreneur or business owner',
-      service: interests[Math.floor(Math.random() * interests.length)],
-      business: 'Simulated Biz',
-      status: 'New lead',
-      date: Date.now()
-    };
-    setLeads([newLead, ...leads]);
-    
-    setActivities([{
-      id: 'a' + Date.now(),
-      user: newLead.name,
-      event: 'account_created',
-      detail: 'Simulated registration',
-      time: Date.now()
-    }, ...activities]);
+    const name = names[Math.floor(Math.random() * names.length)];
+    const service = interests[Math.floor(Math.random() * interests.length)];
+
+    try {
+      await db.collection('se_leads').add({
+        name: name,
+        email: 'test@example.com',
+        intent: 'I am an entrepreneur or business owner',
+        service: service,
+        business: 'Simulated Biz',
+        details: 'This is a simulated test lead.',
+        status: 'New lead',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('se_activities').add({
+        user: name,
+        event: 'account_created',
+        detail: 'Simulated registration via Admin',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  // KPI Calculations
+  // KPI Calculations based on REAL Data
   const kpis = useMemo(() => {
-    const total = leads.length + 122; // Mock baseline
-    const enquiries = leads.length + 30; // Mock baseline
-    const qualified = leads.filter(l => l.status === 'Review' || l.status === 'Discussion underway').length + 19;
-    const followups = leads.filter(l => l.status === 'Follow up' || l.status === 'New lead').length + 10;
+    const total = leads.length;
+    const enquiries = leads.length; // Assuming every lead is an enquiry for now
+    const qualified = leads.filter(l => l.status === 'Review' || l.status === 'Discussion underway').length;
+    const followups = leads.filter(l => l.status === 'Follow up' || l.status === 'New lead').length;
     return { total, enquiries, qualified, followups };
   }, [leads]);
 
+  if (loading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}><i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i></div>;
+  }
+
   return (
     <div className="admin-layout fadein">
-      {/* MOBILE TOGGLE */}
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
         <i className={`fas ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
       </button>
 
-      {/* SIDEBAR */}
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">S</div>
@@ -409,7 +455,7 @@ function AdminPortal({ onExit }) {
         
         <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <button onClick={simulateNewLead} className="btn btn-outline" style={{ width: '100%', fontSize: 12, padding: '10px', marginBottom: 12 }}>
-            <i className="fas fa-plus"></i> Simulate Lead
+            <i className="fas fa-plus"></i> Generate Test Lead
           </button>
           <button onClick={onExit} className="btn" style={{ width: '100%', fontSize: 12, padding: '10px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
             <i className="fas fa-arrow-left"></i> Exit to Public Form
@@ -417,21 +463,18 @@ function AdminPortal({ onExit }) {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="admin-content">
         <div className="fadein">
           
-          {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
                 <div>
                   <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1>
-                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Track platform adoption, user intent, and commercial opportunities.</p>
+                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live data from Firestore. Track platform adoption and commercial opportunities.</p>
                 </div>
               </div>
 
-              {/* KPIs */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
                 {[
                   { label: 'Registered Users', val: kpis.total, icon: 'fa-users', color: '#1B6CA8' },
@@ -452,16 +495,15 @@ function AdminPortal({ onExit }) {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
-                {/* Conversion Funnel Visual */}
                 <div className="card">
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', marginBottom: 20 }}>Conversion Funnel</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {[
                       { label: 'Anonymous Visitors', val: 1240, pct: 100, color: '#E2E8F0', desc: 'Visited without registering' },
-                      { label: 'Registered Accounts', val: kpis.total, pct: 45, color: '#93C5FD', desc: 'Created an account' },
-                      { label: 'Engaged Prospects', val: kpis.enquiries, pct: 25, color: '#FDBA74', desc: 'Requested a quote or enquiry' },
-                      { label: 'Qualified Leads', val: kpis.qualified, pct: 15, color: '#86EFAC', desc: 'Discussion underway' },
-                      { label: 'Paying Customers', val: 4, pct: 8, color: '#1E7B3C', desc: 'Purchased a service' }
+                      { label: 'Registered Accounts', val: kpis.total, pct: Math.max(5, (kpis.total/1240)*100), color: '#93C5FD', desc: 'Created an account' },
+                      { label: 'Engaged Prospects', val: kpis.enquiries, pct: Math.max(2, (kpis.enquiries/1240)*100), color: '#FDBA74', desc: 'Requested a quote or enquiry' },
+                      { label: 'Qualified Leads', val: kpis.qualified, pct: Math.max(1, (kpis.qualified/1240)*100), color: '#86EFAC', desc: 'Discussion underway' },
+                      { label: 'Paying Customers', val: 0, pct: 1, color: '#1E7B3C', desc: 'Purchased a service' }
                     ].map((stage, i) => (
                       <div key={i}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
@@ -476,11 +518,10 @@ function AdminPortal({ onExit }) {
                   </div>
                 </div>
 
-                {/* Recent Activity */}
                 <div className="card">
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', marginBottom: 20 }}>Recent Activity</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {activities.slice(0, 4).map(act => (
+                    {activities.length === 0 ? <p style={{ fontSize: 13, color: '#94A3B8' }}>No activity yet.</p> : activities.slice(0, 5).map(act => (
                       <div key={act.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E8730F', marginTop: 6, flexShrink: 0 }}></span>
                         <div>
@@ -493,7 +534,6 @@ function AdminPortal({ onExit }) {
                 </div>
               </div>
 
-              {/* Recent Leads Table */}
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3>
@@ -509,9 +549,14 @@ function AdminPortal({ onExit }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {leads.slice(0, 4).map(lead => (
+                      {leads.length === 0 ? (
+                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No leads yet. Use the public form or click "Generate Test Lead".</td></tr>
+                      ) : leads.slice(0, 5).map(lead => (
                         <tr key={lead.id}>
-                          <td className="table-td" style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</td>
+                          <td className="table-td">
+                            <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                            <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
+                          </td>
                           <td className="table-td">{lead.service}</td>
                           <td className="table-td">
                             <span className={`status-badge ${
@@ -524,11 +569,7 @@ function AdminPortal({ onExit }) {
                             </span>
                           </td>
                           <td className="table-td">
-                            <select 
-                              className="select-sm" 
-                              value={lead.status}
-                              onChange={(e) => updateLeadStatus(lead.id, e.target.value)}
-                            >
+                            <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
                               <option value="New lead">New lead</option>
                               <option value="Contacted">Contacted</option>
                               <option value="Discussion underway">Discussion underway</option>
@@ -547,12 +588,11 @@ function AdminPortal({ onExit }) {
             </>
           )}
 
-          {/* LEADS PIPELINE TAB */}
           {activeTab === 'leads' && (
             <div className="fadein">
               <div style={{ marginBottom: 24 }}>
                 <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Lead Management Pipeline</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Review intent, classify prospects, and manage follow-ups.</p>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live data from Firestore.</p>
               </div>
 
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -569,15 +609,18 @@ function AdminPortal({ onExit }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {leads.map(lead => (
+                      {leads.length === 0 ? (
+                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No leads found.</td></tr>
+                      ) : leads.map(lead => (
                         <tr key={lead.id}>
                           <td className="table-td">
                             <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                            <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
                             {lead.business !== '-' && <div style={{ fontSize: 11, color: '#E8730F', fontWeight: 600, marginTop: 2 }}>{lead.business}</div>}
                           </td>
                           <td className="table-td" style={{ fontSize: 12, maxWidth: 200, whiteSpace: 'normal' }}>{lead.intent}</td>
                           <td className="table-td"><span style={{ background: '#F1F5F9', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{lead.service}</span></td>
-                          <td className="table-td" style={{ fontSize: 12 }}>{new Date(lead.date).toLocaleDateString('en-GB')}</td>
+                          <td className="table-td" style={{ fontSize: 12 }}>{lead.createdAt ? new Date(lead.createdAt.toDate()).toLocaleDateString('en-GB') : 'Just now'}</td>
                           <td className="table-td">
                             <span className={`status-badge ${
                               lead.status === 'New lead' ? 'status-new' :
@@ -589,11 +632,7 @@ function AdminPortal({ onExit }) {
                             </span>
                           </td>
                           <td className="table-td">
-                            <select 
-                              className="select-sm"
-                              value={lead.status}
-                              onChange={(e) => updateLeadStatus(lead.id, e.target.value)}
-                            >
+                            <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
                               <option value="New lead">New lead</option>
                               <option value="Contacted">Contacted</option>
                               <option value="Discussion underway">Discussion underway</option>
@@ -612,17 +651,18 @@ function AdminPortal({ onExit }) {
             </div>
           )}
 
-          {/* ACTIVITY FEED TAB */}
           {activeTab === 'activity' && (
             <div className="fadein">
               <div style={{ marginBottom: 24 }}>
                 <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Live Activity Tracker</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Real-time event stream of user actions across the platform.</p>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Real-time event stream from Firestore.</p>
               </div>
 
               <div className="card">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {activities.map((act, i) => (
+                  {activities.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>No activity recorded yet.</div>
+                  ) : activities.map((act, i) => (
                     <div key={act.id} style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: i < activities.length - 1 ? '1px solid #F1F5F9' : 'none', alignItems: 'center' }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(232,115,15,0.1)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <i className="fas fa-bolt"></i>
@@ -630,7 +670,7 @@ function AdminPortal({ onExit }) {
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                           <span style={{ fontSize: 14, fontWeight: 800, color: '#0A1F12' }}>{act.user}</span>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>{new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>{act.createdAt ? new Date(act.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
                         </div>
                         <div style={{ fontSize: 13, color: '#475569' }}>
                           <span style={{ fontWeight: 700, color: '#E8730F', fontFamily: 'monospace', fontSize: 12, marginRight: 8 }}>{act.event}</span>
