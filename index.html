@@ -108,11 +108,11 @@ const { useState, useEffect, useMemo } = React;
 const WHATSAPP_NUMBER = '260762499581';
 
 /* ═══════════════════════════════════════════════════════════════════
-   PUBLIC ONBOARDING FORM
+   PUBLIC ONBOARDING FORM (WITH CONDITIONAL LOGIC)
    ═══════════════════════════════════════════════════════════════════ */
 function OnboardingForm({ onAdminClick }) {
   const [intent, setIntent] = useState('');
-  const [service, setService] = useState('');
+  const [q2Answer, setQ2Answer] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
@@ -135,6 +135,13 @@ function OnboardingForm({ onAdminClick }) {
     "Other"
   ];
 
+  // Clear Q2 answer if the intent changes to avoid mismatched data
+  const handleIntentSelect = (opt) => {
+    setIntent(opt);
+    setQ2Answer('');
+    setError('');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
@@ -144,19 +151,76 @@ function OnboardingForm({ onAdminClick }) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (!service) {
-      setError("Please select which service interests you most.");
+    if (!q2Answer) {
+      setError("Please answer the second question.");
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     const message = `*STARTEASY ONBOARDING*%0A%0A` +
       `*1. What brings you here?*%0A${intent}%0A%0A` +
-      `*2. Service Interest:*%0A${service}%0A%0A` +
+      `*2. Details:*%0A${q2Answer}%0A%0A` +
       `*3. Business/Org Name:*%0A${businessName || 'N/A'}%0A%0A` +
       `*4. Tell us more:*%0A${details || 'N/A'}`;
 
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+  };
+
+  // ─── CONDITIONAL LOGIC FOR QUESTION 2 ───
+  const renderQ2 = () => {
+    if (!intent) return null;
+
+    let label = "";
+    let placeholder = "";
+    let isSelect = false;
+
+    switch (intent) {
+      case "I need business or administrative services":
+      case "I am an entrepreneur or business owner":
+        label = "Which service interests you most?";
+        isSelect = true;
+        break;
+      case "I want to become a supplier or service partner":
+        label = "What products or services do you supply?";
+        placeholder = "e.g. Fabric, electronics, logistics...";
+        break;
+      case "I am interested in joining the StartEasy team":
+        label = "What role or expertise are you bringing?";
+        placeholder = "e.g. Finance, Marketing, Admin...";
+        break;
+      case "I am interested in investment or strategic partnerships":
+        label = "What type of partnership or investment are you looking for?";
+        placeholder = "e.g. Equity investment, joint venture...";
+        break;
+      case "I am exploring the platform":
+        label = "What are you looking to explore?";
+        placeholder = "e.g. Just browsing, seeing what you offer...";
+        break;
+      default:
+        label = "Please provide more details";
+    }
+
+    return (
+      <div className="fadein" style={{ marginBottom: 32 }}>
+        <label className="form-label">2. {label} <span style={{ color: 'var(--red)' }}>*</span></label>
+        {isSelect ? (
+          <select className="form-select" value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)}>
+            <option value="" disabled>Select a service...</option>
+            {serviceOptions.map((opt, i) => (
+              <option key={i} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <input 
+            type="text" 
+            className="form-input" 
+            placeholder={placeholder}
+            value={q2Answer}
+            onChange={(e) => setQ2Answer(e.target.value)}
+          />
+        )}
+      </div>
+    );
   };
 
   return (
@@ -203,7 +267,7 @@ function OnboardingForm({ onAdminClick }) {
                   <div 
                     key={i} 
                     className={`radio-tile ${intent === opt ? 'selected' : ''}`}
-                    onClick={() => setIntent(opt)}
+                    onClick={() => handleIntentSelect(opt)}
                   >
                     <div className="radio-dot"></div>
                     <div className="radio-text">{opt}</div>
@@ -212,19 +276,8 @@ function OnboardingForm({ onAdminClick }) {
               </div>
             </div>
 
-            <div style={{ marginBottom: 32 }}>
-              <label className="form-label">2. Which service interests you most? <span style={{ color: 'var(--red)' }}>*</span></label>
-              <select 
-                className="form-select" 
-                value={service} 
-                onChange={(e) => setService(e.target.value)}
-              >
-                <option value="" disabled>Select a service...</option>
-                {serviceOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
+            {/* Dynamically rendered Question 2 */}
+            {renderQ2()}
 
             <div style={{ marginBottom: 32 }}>
               <label className="form-label">3. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
