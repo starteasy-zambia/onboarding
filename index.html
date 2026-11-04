@@ -13,6 +13,66 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
+<!-- ═══ StartEasy Unified Visitor Tracker — paste in <head> of EVERY platform ═══ -->
+<script data-platform="onboarding" data-platform-label="Onboarding & Leads">
+(function(){'use strict';
+var CFG={firebase:{apiKey:"AIzaSyDdEyxvsd2RjgKVYTGYJfYUB_637lV3n5I",authDomain:"starteasy-zambia.firebaseapp.com",projectId:"starteasy-zambia",storageBucket:"starteasy-zambia.firebasestorage.app",messagingSenderId:"54136399237",appId:"1:54136399237:web:2f9f2d7f86bfdfb4be50ec"},cookieDomain:'.starteasyzambia.com',heartbeatMs:45000,scrollStep:25};
+
+function ck(n){var m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return m?m.pop():'';}
+function setCk(n,v){var e=new Date(Date.now()+31536000000000).toUTCString();document.cookie=n+'='+v+';expires='+e+';path=/;SameSite=Lax'+(CFG.cookieDomain?';domain='+CFG.cookieDomain:'');}
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);return v;}catch(e){return null;}}
+function parseUA(ua){if(!ua)return{browser:'—',os:'—',device:'Desktop'};var b='—',o='—',d='Desktop';if(/Edg\//.test(ua))b='Edge';else if(/Chrome\//.test(ua)&&!/Edg|OPR/.test(ua))b='Chrome';else if(/Safari\//.test(ua)&&!/Chrome|Chromium/.test(ua))b='Safari';else if(/Firefox\//.test(ua))b='Firefox';if(/Windows/.test(ua))o='Windows';else if(/Mac OS X/.test(ua))o='macOS';else if(/Android/.test(ua))o='Android';else if(/iPhone|iPad/.test(ua))o='iOS';else if(/Linux/.test(ua))o='Linux';if(/Mobi|Android|iPhone/.test(ua))d='Mobile';else if(/iPad|Tablet/.test(ua))d='Tablet';return{browser:b,os:o,device:d};}
+
+function getVid(){
+  var urlVid=new URLSearchParams(location.search).get('vid');
+  if(urlVid&&/^v_[a-z0-9]{6,}$/.test(urlVid)){setCk('se_vid',urlVid);ls('se_visitor_id',urlVid);ls('se_vid',urlVid);return urlVid;}
+  var c=ck('se_vid');if(c&&/^v_[a-z0-9]{6,}$/.test(c)){ls('se_visitor_id',c);ls('se_vid',c);return c;}
+  var l=ls('se_visitor_id');if(l&&/^v_[a-z0-9]{6,}$/.test(l)){setCk('se_vid',l);ls('se_vid',l);return l;}
+  var l2=ls('se_vid');if(l2&&/^v_[a-z0-9]{6,}$/.test(l2)){setCk('se_vid',l2);ls('se_visitor_id',l2);return l2;}
+  var nv='v_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  setCk('se_vid',nv);ls('se_visitor_id',nv);ls('se_vid',nv);return nv;
+}
+function getSid(){var s=sessionStorage.getItem('se_sid');if(s)return s;s='s_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);sessionStorage.setItem('se_sid',s);return s;}
+
+var st=document.currentScript||(function(){var s=document.getElementsByTagName('script');return s[s.length-1];})();
+var PLATFORM=(st&&st.getAttribute('data-platform'))||'main';
+var PLABEL=(st&&st.getAttribute('data-platform-label'))||PLATFORM;
+
+var db=null,ready=false;
+function initFB(){if(ready)return true;if(typeof firebase==='undefined')return false;if(!firebase.apps.length){try{firebase.initializeApp(CFG.firebase);}catch(e){return false;}}try{db=firebase.firestore();firebase.auth().signInAnonymously().catch(function(){});ready=true;return true;}catch(e){return false;}}
+
+var ua=parseUA(navigator.userAgent);
+var DEV={browser:ua.browser,os:ua.os,device:ua.device,screen:window.screen.width+'×'+window.screen.height,viewport:window.innerWidth+'×'+window.innerHeight,language:navigator.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,referrer:document.referrer||'direct'};
+
+var q=[],timer=null,flushing=false;
+function push(action,details){q.push({visitorId:getVid(),sessionId:getSid(),platform:PLATFORM,platformLabel:PLABEL,action:action,details:details||{},device:DEV,url:location.href,path:location.pathname,title:document.title,createdAt:Date.now()});if(!timer)timer=setTimeout(flush,800);}
+function flush(){timer=null;if(flushing||!q.length)return;if(!initFB())return;flushing=true;var b=q.splice(0,20);Promise.all(b.map(function(e){return db.collection('se_events').add(e).catch(function(){});})).then(function(){flushing=false;if(q.length)setTimeout(flush,800);rollup(b);});}
+function rollup(batch){if(!db||!batch.length)return;var vid=batch[0].visitorId,now=Date.now(),ref=db.collection('se_visitors').doc(vid),last=batch[batch.length-1];
+  ref.set({visitorId:vid,lastSeen:now,lastPlatform:PLATFORM,lastPlatformLabel:PLABEL,lastPath:last.path,lastAction:last.action,device:DEV,platformList:firebase.firestore.FieldValue.arrayUnion(PLATFORM)},{merge:true}).catch(function(){});
+  var inc={totalEvents:firebase.firestore.FieldValue.increment(batch.length)};inc['sessions.'+getSid()+'.events']=firebase.firestore.FieldValue.increment(batch.length);ref.update(inc).catch(function(){});
+  ref.get().then(function(s){if(!s.exists)ref.update({firstSeen:now,firstPlatform:PLATFORM,firstPlatformLabel:PLABEL,sessions:firebase.firestore.FieldValue.increment(1)}).catch(function(){});}).catch(function(){});}
+
+function boot(){
+  push('page_view',{title:document.title});
+  setInterval(function(){push('heartbeat',{});},CFG.heartbeatMs);
+  var mx=0;window.addEventListener('scroll',function(){var p=Math.min(100,Math.round((window.scrollY+window.innerHeight)/Math.max(document.body.scrollHeight,1)*100));if(p>=mx+CFG.scrollStep){mx=p;push('scroll_depth',{percent:p});}},{passive:true});
+  window.addEventListener('beforeunload',flush);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flush();});
+  document.addEventListener('click',function(e){var t=e.target.closest('a,button');if(!t)return;var lb=(t.textContent||'').trim().substring(0,60),h=t.getAttribute('href')||'';
+    if(h&&/^https?:\/\//.test(h)){try{var u=new URL(h);if(u.hostname!==location.hostname&&u.hostname.endsWith('starteasyzambia.com')){u.searchParams.set('vid',getVid());t.href=u.toString();}}catch(err){}}
+    if(h&&!h.startsWith('#')&&!h.startsWith('/')&&!h.startsWith(location.origin))push('external_click',{label:lb,href:h});else if(t.tagName==='BUTTON')push('button_click',{label:lb});},true);
+  document.addEventListener('submit',function(e){var f=e.target;push('form_submit',{form:f.id||f.getAttribute('name')||'form'});},true);
+}
+
+window.SE=window.SE||{};
+window.SE.track=function(a,d){push(a,d||{});};
+window.SE.identify=function(p){var vid=getVid();if(!initFB())return;db.collection('se_visitors').doc(vid).set({email:p.email||null,name:p.name||null,identified:true,identifiedAt:Date.now(),profile:p},{merge:true}).catch(function(){});push('identify',{email:p.email,name:p.name,role:p.role});};
+window.SE.platform=PLATFORM;window.SE.visitorId=getVid();
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+
 <style>
 :root {
   --forest: #0A1F12; --forest-2: #123A1F; --green: #1E7B3C; 
@@ -26,7 +86,20 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .fadein { animation: fi .4s ease both; }
 @keyframes fi { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* ─── PUBLIC ONBOARDING STYLES ─── */
+/* Live indicators */
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; position: relative; }
+.live-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; background: rgba(34,197,94,.4); animation: pulse-ring 1.8s ease-out infinite; }
+@keyframes pulse-ring { 0% { transform: scale(.7); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+
+@keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+.toast { animation: slideIn .35s cubic-bezier(.2,.8,.2,1); }
+.toast-exit { animation: slideOut .3s ease forwards; }
+
+@keyframes flashIn { from { background: rgba(245,166,35,.25); } to { background: transparent; } }
+.flash-new { animation: flashIn 2s ease; }
+
+/* Public onboarding */
 .site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
 .header-content { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 24px; }
 .logo-group { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; }
@@ -55,7 +128,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .error-msg { background: rgba(184,86,79,.08); border: 1px solid rgba(184,86,79,.3); color: #7C2318; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 .success-msg { background: rgba(30,123,60,.08); border: 1px solid rgba(30,123,60,.3); color: #0F5C2A; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
-/* ─── ADMIN PORTAL STYLES ─── */
+/* Admin */
 .admin-layout { display: flex; min-height: 100vh; background: #F8FAFC; }
 .admin-sidebar { width: 260px; background: #0A1F12; color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; transition: transform 0.3s ease; overflow-y: auto; }
 .admin-content { flex: 1; margin-left: 260px; padding: 32px; min-width: 0; transition: margin 0.3s ease; }
@@ -70,7 +143,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .mobile-toggle { display: none; position: fixed; top: 16px; left: 16px; z-index: 60; background: #0A1F12; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
 
 .card { background: #fff; border-radius: 12px; border: 1px solid #E2E8F0; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-.kpi-value { font-size: 32px; font-weight: 800; color: #0A1F12; line-height: 1.1; margin-top: 8px; }
+.kpi-value { font-size: 32px; font-weight: 800; color: #0A1F12; line-height: 1.1; margin-top: 8px; font-variant-numeric: tabular-nums; }
 .table-th { text-align: left; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; font-weight: 800; color: #64748B; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; }
 .table-td { padding: 16px; border-bottom: 1px solid #F1F5F9; color: #1E293B; font-weight: 500; vertical-align: middle; font-size: 13.5px; }
 .status-badge { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; display: inline-block; }
@@ -89,6 +162,11 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .select-sm { padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 12.5px; font-weight: 600; font-family: inherit; color: #0A1F12; background: #fff; cursor: pointer; outline: none; }
 .select-sm:focus { border-color: #E8730F; }
 
+.score-pill { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; margin-left: 8px; display: inline-block; }
+.score-hot { background: #FEE2E2; color: #DC2626; }
+.score-warm { background: #FEF3C7; color: #D97706; }
+.score-cold { background: #E0E7FF; color: #4338CA; }
+
 @media (max-width: 1024px) {
   .admin-sidebar { transform: translateX(-100%); }
   .admin-sidebar.open { transform: translateX(0); }
@@ -104,7 +182,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
 <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 /* ─── FIREBASE INIT ─── */
 const firebaseConfig = {
@@ -115,14 +193,16 @@ const firebaseConfig = {
   messagingSenderId: "54136399237",
   appId: "1:54136399237:web:2f9f2d7f86bfdfb4be50ec"
 };
+// Tracker in <head> already initialized Firebase — this guard prevents double-init
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 if(auth) auth.signInAnonymously().catch(e=>console.warn("Anon auth:", e));
 
 const WHATSAPP_NUMBER = '260762499581';
+const ADMIN_PASSCODE = 'starteasy2024';
 
-/* ─── VISITOR TRACKING UTILITIES ─── */
+/* ─── VISITOR TRACKING (routes through unified SE tracker) ─── */
 function getVisitorId() {
   try {
     let vid = localStorage.getItem('se_visitor_id');
@@ -133,16 +213,154 @@ function getVisitorId() {
     return vid;
   } catch(e) { return 'v_unknown'; }
 }
+function getSessionId() {
+  try {
+    let sid = sessionStorage.getItem('se_sid');
+    if (!sid) {
+      sid = 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      sessionStorage.setItem('se_sid', sid);
+    }
+    return sid;
+  } catch(e) { return 's_unknown'; }
+}
+function parseUA(ua) {
+  if (!ua) return { browser: '—', os: '—', device: 'Desktop' };
+  let browser = '—', os = '—', device = 'Desktop';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Chrome\//.test(ua) && !/Edg|OPR/.test(ua)) browser = 'Chrome';
+  else if (/Safari\//.test(ua) && !/Chrome|Chromium/.test(ua)) browser = 'Safari';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  if (/Windows/.test(ua)) os = 'Windows';
+  else if (/Mac OS X/.test(ua)) os = 'macOS';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/iPhone|iPad/.test(ua)) os = 'iOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  if (/Mobi|Android|iPhone/.test(ua)) device = 'Mobile';
+  else if (/iPad|Tablet/.test(ua)) device = 'Tablet';
+  return { browser, os, device };
+}
+const DEVICE_INFO = (() => {
+  const ua = navigator.userAgent;
+  const parsed = parseUA(ua);
+  return {
+    ...parsed,
+    screen: `${window.screen.width}×${window.screen.height}`,
+    language: navigator.language,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    referrer: document.referrer || 'direct'
+  };
+})();
 
+/**
+ * Track event — routes through the unified SE tracker so it appears
+ * in the cross-platform dashboard with platform="onboarding".
+ * Falls back to direct Firestore write if the SE tracker failed to load.
+ */
 async function trackEvent(action, details = {}) {
+  if (window.SE && typeof window.SE.track === 'function') {
+    window.SE.track(action, details);
+    return;
+  }
+  // Fallback (should not normally run)
   try {
     await db.collection('se_events').add({
       visitorId: getVisitorId(),
+      sessionId: getSessionId(),
+      platform: 'onboarding',
+      platformLabel: 'Onboarding & Leads',
       action,
       details,
+      device: DEVICE_INFO,
+      url: location.href,
+      path: location.pathname,
+      title: document.title,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch(e) { console.warn("Tracking failed", e); }
+}
+
+/* ─── SMALL HELPERS ─── */
+function timeAgo(ts) {
+  if (!ts) return 'just now';
+  const ms = ts.toMillis ? ts.toMillis() : ts;
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function useCountUp(target) {
+  const [val, setVal] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const start = prev.current;
+    const t0 = performance.now();
+    let raf;
+    const step = (t) => {
+      const p = Math.min((t - t0) / 600, 1);
+      const e = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(start + (target - start) * e));
+      if (p < 1) raf = requestAnimationFrame(step);
+      else prev.current = target;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return val;
+}
+function playBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    o.start(); o.stop(ctx.currentTime + 0.36);
+    setTimeout(() => ctx.close(), 500);
+  } catch(e) {}
+}
+function exportLeadsCSV(leads) {
+  const headers = ['Name','Email','Business','Intent','Service','Status','Details','Created'];
+  const rows = leads.map(l => [
+    l.name||'', l.email||'', l.business||'', l.intent||'', l.service||'',
+    l.status||'', l.details||'', l.createdAt ? new Date(l.createdAt.toDate()).toISOString() : ''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `starteasy-leads-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ─── ANIMATED KPI ─── */
+function KpiCard({ label, val, icon, color, sub }) {
+  const animated = useCountUp(val);
+  return (
+    <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+        <span style={{ width: 32, height: 32, borderRadius: 8, background: color + '15', color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <i className={`fas ${icon}`}></i>
+        </span>
+      </div>
+      <div className="kpi-value">{animated}</div>
+      {sub && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4, fontWeight: 600 }}>{sub}</div>}
+    </div>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -155,14 +373,30 @@ function OnboardingForm({ onAdminClick }) {
   const [email, setEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [details, setDetails] = useState('');
-  
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [recentCount, setRecentCount] = useState(null);
+  const focusedRef = useRef(new Set());
 
-  // Track page view on load
+  // NOTE: page_view, heartbeat, scroll_depth are handled by the global SE tracker.
+  // This effect only tracks session_end and updates the live social-proof counter.
   useEffect(() => {
-    trackEvent('page_view', { page: 'onboarding' });
+    const start = Date.now();
+    const leave = () => {
+      const secs = Math.round((Date.now() - start) / 1000);
+      if (secs > 3) trackEvent('session_end', { duration_secs: secs });
+    };
+    window.addEventListener('beforeunload', leave);
+    // Live social proof — people who joined this week
+    const unsub = db.collection('se_leads').orderBy('createdAt','desc').limit(20)
+      .onSnapshot(snap => {
+        const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+        let n = 0;
+        snap.forEach(d => { const t = d.data().createdAt?.toMillis?.(); if (t && t > cutoff) n++; });
+        setRecentCount(n);
+      }, () => {});
+    return () => { window.removeEventListener('beforeunload', leave); unsub(); };
   }, []);
 
   const intentOptions = [
@@ -173,7 +407,6 @@ function OnboardingForm({ onAdminClick }) {
     "I am interested in investment or strategic partnerships",
     "I am exploring the platform"
   ];
-
   const serviceOptions = [
     "Financial Support & Management",
     "Business Registration & Compliance",
@@ -184,47 +417,51 @@ function OnboardingForm({ onAdminClick }) {
   ];
 
   const handleIntentSelect = (opt) => {
-    setIntent(opt);
-    setQ2Answer('');
-    setError('');
+    setIntent(opt); setQ2Answer(''); setError('');
     trackEvent('intent_selected', { intent: opt });
+  };
+  const onFieldFocus = (field) => {
+    if (focusedRef.current.has(field)) return;
+    focusedRef.current.add(field);
+    trackEvent('field_focus', { field });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess(false);
-
-    // Validation
+    setError(''); setSuccess(false);
     if (!intent) return setError("Please select what brings you to StartEasy.");
     if (!q2Answer) return setError("Please answer the second question.");
     if (!fullName.trim()) return setError("Please enter your full name.");
     if (!email.trim() || !email.includes('@')) return setError("Please enter a valid email address.");
 
     setSubmitting(true);
-
     try {
-      // 1. Save to Firestore (se_leads)
-      const leadPayload = {
-        name: fullName,
-        email: email,
-        intent: intent,
-        service: q2Answer,
-        business: businessName || '-',
-        details: details || '',
+      await db.collection('se_leads').add({
+        name: fullName, email, intent, service: q2Answer,
+        business: businessName || '-', details: details || '',
         status: 'New lead',
-        visitorId: getVisitorId(),
+        visitorId: getVisitorId(), sessionId: getSessionId(),
+        device: DEVICE_INFO,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      
-      await db.collection('se_leads').add(leadPayload);
-
-      // 2. Log Activity 
+      });
       await trackEvent('form_submitted', { name: fullName, service: q2Answer });
 
-      // 3. Success & Open WhatsApp
+      // ── Unified cross-platform identity ──
+      // Tags this visitor as an identified lead across every StartEasy platform
+      // so the unified dashboard can follow their journey everywhere.
+      if (window.SE && typeof window.SE.identify === 'function') {
+        window.SE.identify({
+          email,
+          name: fullName,
+          role: 'lead',
+          intent,
+          service: q2Answer,
+          business: businessName || null
+        });
+      }
+
       setSuccess(true);
-      
+
       const message = `*STARTEASY ONBOARDING*%0A%0A` +
         `*Name:* ${fullName}%0A` +
         `*Email:* ${email}%0A%0A` +
@@ -235,23 +472,19 @@ function OnboardingForm({ onAdminClick }) {
 
       setTimeout(() => {
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
-        // Reset form
         setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setBusinessName(''); setDetails('');
-        setSuccess(false);
-        setSubmitting(false);
-      }, 1500);
-
+        setSuccess(false); setSubmitting(false);
+      }, 1400);
     } catch (err) {
       console.error(err);
-      setError("Failed to submit to database. Please try again.");
+      setError("Failed to submit. Please try again.");
       setSubmitting(false);
     }
   };
 
   const renderQ2 = () => {
     if (!intent) return null;
-    let label = ""; let placeholder = ""; let isSelect = false;
-
+    let label = "", placeholder = "", isSelect = false;
     switch (intent) {
       case "I need business or administrative services":
       case "I am an entrepreneur or business owner":
@@ -266,17 +499,16 @@ function OnboardingForm({ onAdminClick }) {
         label = "What are you looking to explore?"; placeholder = "e.g. Just browsing, seeing what you offer..."; break;
       default: label = "Please provide more details";
     }
-
     return (
       <div className="fadein" style={{ marginBottom: 32 }}>
         <label className="form-label">2. {label} <span style={{ color: 'var(--red)' }}>*</span></label>
         {isSelect ? (
-          <select className="form-select" value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)}>
+          <select className="form-select" value={q2Answer} onChange={(e) => { setQ2Answer(e.target.value); trackEvent('q2_selected', { value: e.target.value }); }}>
             <option value="" disabled>Select a service...</option>
             {serviceOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
           </select>
         ) : (
-          <input type="text" className="form-input" placeholder={placeholder} value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)} />
+          <input type="text" className="form-input" placeholder={placeholder} value={q2Answer} onFocus={() => onFieldFocus('q2_text')} onChange={(e) => setQ2Answer(e.target.value)} />
         )}
       </div>
     );
@@ -293,9 +525,14 @@ function OnboardingForm({ onAdminClick }) {
               <div className="logo-text-main">StartEasy Zambia</div>
             </div>
           </a>
-          <button onClick={onAdminClick} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="fas fa-lock"></i> Admin Portal
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255,255,255,.7)', fontWeight: 700 }}>
+              <span className="live-dot"></span> LIVE
+            </span>
+            <button onClick={onAdminClick} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-lock"></i> Admin Portal
+            </button>
+          </div>
         </div>
       </header>
 
@@ -307,6 +544,12 @@ function OnboardingForm({ onAdminClick }) {
           <p style={{ fontSize: 16, color: 'rgba(10,31,18,.65)', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>
             Tell us a little about what brings you here so we can connect you with the right support.
           </p>
+          {recentCount !== null && recentCount > 0 && (
+            <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(30,123,60,.08)', color: '#0F5C2A', padding: '8px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
+              <span className="live-dot" style={{ background: '#1E7B3C' }}></span>
+              {recentCount} {recentCount === 1 ? 'person has' : 'people have'} joined this week
+            </div>
+          )}
         </div>
 
         <div className="form-card fadein">
@@ -314,7 +557,6 @@ function OnboardingForm({ onAdminClick }) {
           {success && <div className="success-msg"><i className="fas fa-check-circle"></i> Data saved! Opening WhatsApp...</div>}
 
           <form onSubmit={handleSubmit}>
-            
             <div style={{ marginBottom: 32 }}>
               <label className="form-label">1. What brings you to StartEasy? <span style={{ color: 'var(--red)' }}>*</span></label>
               <div style={{ marginTop: 12 }}>
@@ -331,31 +573,27 @@ function OnboardingForm({ onAdminClick }) {
 
             <div style={{ marginBottom: 24 }}>
               <label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label>
-              <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+              <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onFocus={() => onFieldFocus('name')} onChange={(e) => setFullName(e.target.value)} required />
             </div>
-
             <div style={{ marginBottom: 24 }}>
               <label className="form-label">4. Email Address <span style={{ color: 'var(--red)' }}>*</span></label>
-              <input type="email" className="form-input" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <input type="email" className="form-input" placeholder="you@company.com" value={email} onFocus={() => onFieldFocus('email')} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-
             <div style={{ marginBottom: 24 }}>
               <label className="form-label">5. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
-              <input type="text" className="form-input" placeholder="e.g. Acme Traders Ltd" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
+              <input type="text" className="form-input" placeholder="e.g. Acme Traders Ltd" value={businessName} onFocus={() => onFieldFocus('business')} onChange={(e) => setBusinessName(e.target.value)} />
             </div>
-
             <div style={{ marginBottom: 32 }}>
               <label className="form-label">6. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
-              <textarea className="form-input" rows={4} placeholder="Anything specific you want us to know?" value={details} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}></textarea>
+              <textarea className="form-input" rows={4} placeholder="Anything specific you want us to know?" value={details} onFocus={() => onFieldFocus('details')} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}></textarea>
             </div>
 
             <button type="submit" className="btn-wa" disabled={submitting}>
               {submitting ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fab fa-whatsapp"></i> Save & Connect via WhatsApp</>}
             </button>
             <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(10,31,18,.5)', marginTop: 16 }}>
-              Your details are securely saved to our database and will pre-fill your WhatsApp message.
+              Your details are securely saved and will pre-fill your WhatsApp message.
             </p>
-
           </form>
         </div>
       </main>
@@ -364,84 +602,296 @@ function OnboardingForm({ onAdminClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL: User & Lead Intelligence
+   ADMIN LOGIN
+   ═══════════════════════════════════════════════════════════════════ */
+function AdminLogin({ onUnlock, onExit }) {
+  const [pass, setPass] = useState('');
+  const [err, setErr] = useState('');
+  const submit = (e) => {
+    e.preventDefault();
+    if (pass === ADMIN_PASSCODE) {
+      localStorage.setItem('se_admin_auth', '1');
+      onUnlock();
+    } else {
+      setErr('Incorrect passcode'); setPass('');
+    }
+  };
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', padding: 24 }}>
+      <div className="card fadein" style={{ maxWidth: 400, width: '100%', padding: 36, textAlign: 'center' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#E8730F,#F5A623)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 20px' }}>
+          <i className="fas fa-lock"></i>
+        </div>
+        <h2 className="serif" style={{ fontSize: 22, fontWeight: 800, color: '#0A1F12', marginBottom: 8 }}>Admin Portal Access</h2>
+        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>Enter your passcode to unlock the intelligence dashboard.</p>
+        <form onSubmit={submit}>
+          {err && <div className="error-msg" style={{ marginBottom: 16 }}><i className="fas fa-exclamation-circle"></i> {err}</div>}
+          <input type="password" className="form-input" placeholder="Passcode" value={pass} onChange={e => { setPass(e.target.value); setErr(''); }} autoFocus style={{ marginBottom: 12 }} />
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 12 }}>Unlock Portal</button>
+          <button type="button" onClick={onExit} className="btn" style={{ width: '100%', marginTop: 8, padding: 12, background: 'transparent', color: '#64748B' }}>← Back to Form</button>
+        </form>
+        <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 20 }}>
+          Demo passcode: <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: 4, color: '#475569' }}>{ADMIN_PASSCODE}</code>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ADMIN PORTAL
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
   const [leads, setLeads] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedVisitor, setSelectedVisitor] = useState(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const [toasts, setToasts] = useState([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [seeding, setSeeding] = useState(false);
 
-  // Fetch Real Data from Firestore
+  // Live ticker
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Firestore live subscriptions
+  const dataLoadedRef = useRef(false);
+  const toastedRef = useRef(new Set());
   useEffect(() => {
     const unsubLeads = db.collection('se_leads')
       .orderBy('createdAt', 'desc')
       .onSnapshot(snap => {
         setLeads(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      }, err => console.error("Error fetching leads:", err));
-
+        if (!dataLoadedRef.current) dataLoadedRef.current = true;
+      }, err => console.error("leads:", err));
     const unsubEvents = db.collection('se_events')
       .orderBy('createdAt', 'desc')
       .limit(500)
       .onSnapshot(snap => {
         setEvents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         setLoading(false);
-      }, err => console.error("Error fetching events:", err));
-
+      }, err => { console.error("events:", err); setLoading(false); });
     return () => { unsubLeads(); unsubEvents(); };
   }, []);
+
+  // New-lead toasts + sound
+  useEffect(() => {
+    if (!dataLoadedRef.current || leads.length === 0) return;
+    const newest = leads[0];
+    const ts = newest.createdAt?.toMillis?.() || 0;
+    const isFresh = ts > Date.now() - 10000;
+    if (isFresh && !toastedRef.current.has(newest.id)) {
+      toastedRef.current.add(newest.id);
+      const toastId = `t_${Date.now()}`;
+      setToasts(prev => [...prev, { id: toastId, title: `New lead: ${newest.name}`, sub: newest.service || newest.intent, kind: 'lead' }]);
+      if (soundOn) playBeep();
+      setTimeout(() => {
+        setToasts(prev => prev.map(t => t.id === toastId ? { ...t, exiting: true } : t));
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toastId)), 320);
+      }, 5200);
+    }
+  }, [leads, soundOn]);
 
   const updateLeadStatus = async (id, newStatus) => {
     try {
       await db.collection('se_leads').doc(id).update({ status: newStatus });
       setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
-    } catch (err) {
-      console.error("Error updating status:", err);
-      alert("Failed to update status. Check console.");
-    }
+    } catch (err) { console.error(err); alert("Failed to update status."); }
   };
 
-  // KPI Calculations
+  // ─── KPI CALCULATIONS ───
   const kpis = useMemo(() => {
     const totalLeads = leads.length;
-    const enquiries = leads.filter(l => l.status !== 'New lead').length;
-    const qualified = leads.filter(l => l.status === 'Review' || l.status === 'Discussion underway').length;
-    const followups = leads.filter(l => l.status === 'Follow up' || l.status === 'New lead').length;
-    
-    // Unique Visitors
+    const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
+    const followups = leads.filter(l => ['New lead','Follow up','Contacted'].includes(l.status)).length;
+    const converted = leads.filter(l => l.status === 'Converted to customer').length;
+    const weekCutoff = Date.now() - 7 * 24 * 3600 * 1000;
+    const thisWeek = leads.filter(l => (l.createdAt?.toMillis?.() || 0) > weekCutoff).length;
     const uniqueVisitors = new Set(events.map(e => e.visitorId).filter(Boolean)).size;
-    
-    return { totalLeads, enquiries, qualified, followups, uniqueVisitors };
+    const cutoff = Date.now() - 3 * 60 * 1000;
+    const online = new Set();
+    events.forEach(e => { const ts = e.createdAt?.toMillis?.() || 0; if (ts > cutoff && e.visitorId) online.add(e.visitorId); });
+    return { totalLeads, qualified, followups, converted, thisWeek, uniqueVisitors, onlineNow: online.size };
   }, [leads, events]);
 
-  // Group Events by Visitor
+  // Lead scoring
+  const scoreFor = (lead) => {
+    let s = 10;
+    if (/entrepreneur|business owner/i.test(lead.intent || '')) s += 20;
+    if (lead.business && lead.business !== '-') s += 15;
+    if (lead.details && lead.details.length > 0) s += 10;
+    if (lead.device) s += 5;
+    const vEvents = events.filter(e => e.visitorId === lead.visitorId).length;
+    s += Math.min(20, vEvents * 2);
+    return Math.min(100, s);
+  };
+  const scoreClass = (s) => s >= 60 ? 'score-hot' : s >= 35 ? 'score-warm' : 'score-cold';
+  const scoreLabel = (s) => s >= 60 ? 'HOT' : s >= 35 ? 'WARM' : 'COOL';
+
+  // Filtered leads
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'active') {
+          if (['Converted to customer','Not interested'].includes(l.status)) return false;
+        } else if (l.status !== statusFilter) return false;
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return (l.name || '').toLowerCase().includes(q) ||
+               (l.email || '').toLowerCase().includes(q) ||
+               (l.business || '').toLowerCase().includes(q) ||
+               (l.service || '').toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [leads, search, statusFilter]);
+
+  // Visitor grouping
   const visitorData = useMemo(() => {
     const byVisitor = {};
     events.forEach(e => {
       if (!e.visitorId) return;
       if (!byVisitor[e.visitorId]) {
-        byVisitor[e.visitorId] = { id: e.visitorId, events: [], firstSeen: e.createdAt, lastSeen: e.createdAt };
+        byVisitor[e.visitorId] = { id: e.visitorId, events: [], sessions: new Set(), device: e.device || null, platforms: new Set() };
       }
       byVisitor[e.visitorId].events.push(e);
-      // Update timestamps
-      const ts = e.createdAt?.toMillis ? e.createdAt.toMillis() : Date.now();
-      if (ts > byVisitor[e.visitorId].lastSeen) byVisitor[e.visitorId].lastSeen = ts;
-      if (ts < byVisitor[e.visitorId].firstSeen) byVisitor[e.visitorId].firstSeen = ts;
+      if (e.sessionId) byVisitor[e.visitorId].sessions.add(e.sessionId);
+      if (!byVisitor[e.visitorId].device && e.device) byVisitor[e.visitorId].device = e.device;
+      if (e.platform) byVisitor[e.visitorId].platforms.add(e.platform);
     });
-    // Sort events inside each visitor group (newest first)
-    Object.values(byVisitor).forEach(v => v.events.sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
-    return Object.values(byVisitor).sort((a,b) => b.lastSeen - a.lastSeen);
+    Object.values(byVisitor).forEach(v => {
+      v.events.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      v.firstSeen = v.events[v.events.length - 1]?.createdAt?.toMillis?.() || Date.now();
+      v.lastSeen = v.events[0]?.createdAt?.toMillis?.() || Date.now();
+      v.sessionCount = v.sessions.size;
+      v.platformList = Array.from(v.platforms);
+    });
+    return Object.values(byVisitor).sort((a, b) => b.lastSeen - a.lastSeen);
   }, [events]);
 
+  // Live activity feed
+  const liveFeed = useMemo(() => events.slice(0, 12), [events]);
+
+  // Sparkline buckets (last 60 min, 20 buckets)
+  const sparkline = useMemo(() => {
+    const now = Date.now();
+    const buckets = Array(20).fill(0);
+    events.forEach(e => {
+      const ts = e.createdAt?.toMillis?.() || 0;
+      const mins = (now - ts) / 60000;
+      if (mins >= 0 && mins < 60) {
+        const idx = 19 - Math.floor(mins / 3);
+        if (idx >= 0 && idx < 20) buckets[idx]++;
+      }
+    });
+    return buckets;
+  }, [events]);
+  const sparkMax = Math.max(1, ...sparkline);
+
+  // Funnel
+  const funnel = useMemo(() => {
+    const visitors = kpis.uniqueVisitors;
+    const engaged = new Set(events.filter(e => e.action === 'intent_selected').map(e => e.visitorId)).size;
+    const submitted = leads.length;
+    const contacted = leads.filter(l => l.status !== 'New lead').length;
+    const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
+    const converted = leads.filter(l => l.status === 'Converted to customer').length;
+    return [
+      { label: 'Visitors', count: visitors, color: '#1B6CA8' },
+      { label: 'Engaged (selected intent)', count: engaged, color: '#7A4FA3' },
+      { label: 'Registered leads', count: submitted, color: '#E8730F' },
+      { label: 'Contacted', count: contacted, color: '#F5A623' },
+      { label: 'Qualified', count: qualified, color: '#1E7B3C' },
+      { label: 'Converted', count: converted, color: '#0F5C2A' }
+    ];
+  }, [events, leads, kpis.uniqueVisitors]);
+
+  // Demo seeding
+  const seedDemo = async () => {
+    if (!confirm("This will add 6 demo leads and ~20 demo events with [DEMO] tags. Continue?")) return;
+    setSeeding(true);
+    try {
+      const demos = [
+        { name: '[DEMO] Chanda Mwale', email: 'chanda@demo.zm', business: 'Chanda Traders Ltd', intent: 'I am an entrepreneur or business owner', service: 'Business Registration & Compliance', status: 'Discussion underway', details: 'Need help registering with PACRA.' },
+        { name: '[DEMO] Thandiwe Banda', email: 'thandiwe@demo.zm', business: 'Bloom Beauty', intent: 'I need business or administrative services', service: 'Financial Support & Management', status: 'New lead', details: 'Looking for bookkeeping support.' },
+        { name: '[DEMO] Mwila Phiri', email: 'mwila@demo.zm', business: '-', intent: 'I want to become a supplier or service partner', service: 'Other', status: 'Contacted', details: 'Supplies fabric from Tanzania.' },
+        { name: '[DEMO] Kelvin Zulu', email: 'kelvin@demo.zm', business: 'Zulu Logistics', intent: 'I am interested in investment or strategic partnerships', service: 'Venture Building Services', status: 'Quotation sent', details: 'Looking for equity partners.' },
+        { name: '[DEMO] Naomi Chileshe', email: 'naomi@demo.zm', business: 'AgriCo', intent: 'I need business or administrative services', service: 'Administrative Services Desk', status: 'Converted to customer', details: 'Signed monthly retainer.' },
+        { name: '[DEMO] Brian Tembo', email: 'brian@demo.zm', business: '-', intent: 'I am exploring the platform', service: 'Other', status: 'Not interested', details: 'Just browsing.' }
+      ];
+      for (let i = 0; i < demos.length; i++) {
+        await db.collection('se_leads').add({
+          ...demos[i],
+          visitorId: 'v_demo_' + i,
+          sessionId: 's_demo_' + i,
+          device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      const actions = ['page_view','intent_selected','field_focus','field_focus','form_submitted'];
+      for (let v = 0; v < 4; v++) {
+        for (let a = 0; a < actions.length; a++) {
+          await db.collection('se_events').add({
+            visitorId: 'v_demo_' + v,
+            sessionId: 's_demo_' + v,
+            platform: 'onboarding',
+            platformLabel: 'Onboarding & Leads',
+            action: actions[a],
+            details: a === 1 ? { intent: demos[v].intent } : a === 2 ? { field: 'name' } : {},
+            device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }
+      alert('Demo data seeded. It will appear live.');
+    } catch(e) {
+      console.error(e); alert('Seeding failed: ' + e.message);
+    } finally { setSeeding(false); }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('se_admin_auth');
+    onExit();
+  };
+
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}><i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i></div>;
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', flexDirection: 'column', gap: 16 }}>
+        <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i>
+        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>Connecting to live data…</div>
+      </div>
+    );
   }
 
   return (
     <div className="admin-layout fadein">
+      {/* Toasts */}
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 340 }}>
+        {toasts.map(t => (
+          <div key={t.id} className={t.exiting ? 'toast-exit' : 'toast'} style={{
+            background: '#fff', borderLeft: '4px solid #1E7B3C', borderRadius: 8,
+            padding: '14px 16px', boxShadow: '0 10px 30px rgba(10,31,18,.15)',
+            display: 'flex', gap: 12, alignItems: 'flex-start'
+          }}>
+            <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(30,123,60,.12)', color: '#1E7B3C', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <i className="fas fa-user-plus"></i>
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0A1F12' }}>{t.title}</div>
+              <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>{t.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
         <i className={`fas ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
       </button>
@@ -460,7 +910,6 @@ function AdminPortal({ onExit }) {
           <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}>
             <i className="fas fa-chart-pie"></i> Intelligence Dashboard
           </div>
-          
           <div className="nav-section">CRM</div>
           <div className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); setSidebarOpen(false); }}>
             <i className="fas fa-filter"></i> Leads & Pipeline
@@ -468,91 +917,176 @@ function AdminPortal({ onExit }) {
           <div className={`nav-item ${activeTab === 'visitors' ? 'active' : ''}`} onClick={() => { setActiveTab('visitors'); setSidebarOpen(false); }}>
             <i className="fas fa-users-viewfinder"></i> Visitor Tracker
           </div>
+          <div className="nav-section">System</div>
+          <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}>
+            <i className="fas fa-sliders"></i> Settings
+          </div>
         </div>
-        
+
         <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={onExit} className="btn" style={{ width: '100%', fontSize: 12, padding: '10px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <i className="fas fa-arrow-left"></i> Exit to Public Form
+          <button onClick={handleLogout} className="btn" style={{ width: '100%', fontSize: 12, padding: 10, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+            <i className="fas fa-sign-out-alt"></i> Logout
           </button>
         </div>
       </aside>
 
       <main className="admin-content">
+        {/* Live top bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(34,197,94,.1)', color: '#0F5C2A', padding: '6px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em' }}>
+              <span className="live-dot"></span> LIVE
+            </span>
+            <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>
+              <i className="fas fa-circle" style={{ color: '#22c55e', fontSize: 8, marginRight: 6 }}></i>
+              {kpis.onlineNow} online now
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setSoundOn(!soundOn)} className="btn btn-outline" style={{ padding: '8px 14px' }} title={soundOn ? 'Sound on' : 'Sound off'}>
+              <i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+            </button>
+            <button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline" style={{ padding: '8px 14px' }}>
+              <i className="fas fa-download"></i> Export CSV
+            </button>
+          </div>
+        </div>
+
         <div className="fadein">
-          
           {activeTab === 'dashboard' && (
             <>
-              <div style={{ marginBottom: 32 }}>
+              <div style={{ marginBottom: 24 }}>
                 <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live data from Firestore. Track platform adoption and commercial opportunities.</p>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live Firestore stream. Everything updates in real time.</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
-                {[
-                  { label: 'Registered Leads', val: kpis.totalLeads, icon: 'fa-user-check', color: '#1B6CA8' },
-                  { label: 'Total Visitors', val: kpis.uniqueVisitors, icon: 'fa-users-viewfinder', color: '#E8730F' },
-                  { label: 'Potential Customers', val: kpis.qualified, icon: 'fa-bullseye', color: '#1E7B3C' },
-                  { label: 'Follow-ups Required', val: kpis.followups, icon: 'fa-clock', color: '#B8564F' }
-                ].map((kpi, i) => (
-                  <div key={i} className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{kpi.label}</span>
-                      <span style={{ width: 32, height: 32, borderRadius: 8, background: kpi.color + '15', color: kpi.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <i className={`fas ${kpi.icon}`}></i>
-                      </span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20, marginBottom: 24 }}>
+                <KpiCard label="Registered Leads" val={kpis.totalLeads} icon="fa-user-check" color="#1B6CA8" sub={`${kpis.thisWeek} this week`} />
+                <KpiCard label="Online Right Now" val={kpis.onlineNow} icon="fa-signal" color="#1E7B3C" sub="active last 3 min" />
+                <KpiCard label="Qualified" val={kpis.qualified} icon="fa-bullseye" color="#7A4FA3" sub="discussion & beyond" />
+                <KpiCard label="Follow-ups" val={kpis.followups} icon="fa-clock" color="#B8564F" sub="need attention" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 20, marginBottom: 24 }}>
+                {/* Sparkline */}
+                <div className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Activity · Last 60 min</h3>
+                      <p style={{ fontSize: 12, color: '#94A3B8', margin: '2px 0 0' }}>Events per 3-min bucket</p>
                     </div>
-                    <div className="kpi-value">{kpi.val}</div>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.1)', padding: '4px 8px', borderRadius: 6 }}>
+                      {events.length} events
+                    </span>
                   </div>
-                ))}
+                  <svg viewBox="0 0 200 60" preserveAspectRatio="none" style={{ width: '100%', height: 100 }}>
+                    {sparkline.map((v, i) => {
+                      const h = (v / sparkMax) * 56;
+                      return <rect key={i} x={i * 10 + 1} y={58 - h} width={8} height={h || 1} fill="#E8730F" rx="1.5" opacity={0.85} />;
+                    })}
+                  </svg>
+                </div>
+
+                {/* Live activity feed */}
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '18px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="live-dot"></span>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Live Activity</h3>
+                  </div>
+                  <div style={{ maxHeight: 230, overflowY: 'auto', padding: '0 20px 16px' }}>
+                    {liveFeed.length === 0 ? (
+                      <div style={{ padding: 20, textAlign: 'center', color: '#94A3B8', fontSize: 12 }}>Waiting for events…</div>
+                    ) : liveFeed.map(e => (
+                      <div key={e.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #F1F5F9', alignItems: 'flex-start' }}>
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(232,115,15,.12)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, marginTop: 1 }}>
+                          <i className={`fas ${e.action === 'form_submitted' ? 'fa-user-plus' : e.action === 'intent_selected' ? 'fa-mouse-pointer' : e.action === 'heartbeat' ? 'fa-heart' : e.action === 'page_view' ? 'fa-eye' : e.action === 'identify' ? 'fa-id-card' : 'fa-bolt'}`}></i>
+                        </span>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>
+                            {e.action.replace(/_/g, ' ')}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: '#94A3B8', fontWeight: 500, marginTop: 1 }}>
+                            {e.device?.browser || '—'} · {e.device?.device || '—'} · {timeAgo(e.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
+              {/* Funnel */}
+              <div className="card" style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>Conversion Funnel</h3>
+                <p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 20px' }}>Every stage updates live.</p>
+                {funnel.map((stage, i) => {
+                  const base = funnel[0].count || 1;
+                  const pct = Math.round((stage.count / base) * 100);
+                  const prevCount = i === 0 ? stage.count : funnel[i-1].count;
+                  const dropoff = prevCount ? Math.round((1 - stage.count / prevCount) * 100) : 0;
+                  return (
+                    <div key={i} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginBottom: 5, color: '#475569' }}>
+                        <span>{stage.label}</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {stage.count} <span style={{ color: '#94A3B8', fontWeight: 500 }}>({pct}%)</span>
+                          {i > 0 && stage.count < prevCount && <span style={{ color: '#DC2626', fontWeight: 600, marginLeft: 8 }}>−{dropoff}%</span>}
+                        </span>
+                      </div>
+                      <div style={{ height: 22, background: '#F1F5F9', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.max(pct, 2)}%`, background: stage.color, borderRadius: 6, transition: 'width .7s cubic-bezier(.2,.8,.2,1)' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Recent leads */}
               <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3>
+                  <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Latest 5</span>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                     <thead>
                       <tr>
                         <th className="table-th">User</th>
-                        <th className="table-th">Interest</th>
+                        <th className="table-th">Service</th>
+                        <th className="table-th">Score</th>
                         <th className="table-th">Status</th>
-                        <th className="table-th">Action</th>
+                        <th className="table-th">Added</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leads.length === 0 ? (
-                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No leads yet. Use the public form to test.</td></tr>
-                      ) : leads.slice(0, 5).map(lead => (
-                        <tr key={lead.id}>
-                          <td className="table-td">
-                            <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
-                            <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
-                          </td>
-                          <td className="table-td">{lead.service}</td>
-                          <td className="table-td">
-                            <span className={`status-badge ${
-                              lead.status === 'New lead' ? 'status-new' :
-                              lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
-                              lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
-                              lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
-                            }`}>
-                              {lead.status}
-                            </span>
-                          </td>
-                          <td className="table-td">
-                            <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
-                              <option value="New lead">New lead</option>
-                              <option value="Contacted">Contacted</option>
-                              <option value="Discussion underway">Discussion underway</option>
-                              <option value="Quotation sent">Quotation sent</option>
-                              <option value="Follow up">Follow-up later</option>
-                              <option value="Converted to customer">Converted to customer</option>
-                              <option value="Not interested">Not interested</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>
+                          No leads yet. Use the form or click <strong>Seed demo data</strong> in Settings.
+                        </td></tr>
+                      ) : leads.slice(0, 5).map(lead => {
+                        const s = scoreFor(lead);
+                        return (
+                          <tr key={lead.id}>
+                            <td className="table-td">
+                              <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12 }}>{lead.service}</td>
+                            <td className="table-td">
+                              <span className={`score-pill ${scoreClass(s)}`}>{scoreLabel(s)} · {s}</span>
+                            </td>
+                            <td className="table-td">
+                              <span className={`status-badge ${
+                                lead.status === 'New lead' ? 'status-new' :
+                                lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
+                                lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
+                                lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
+                              }`}>{lead.status}</span>
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>{timeAgo(lead.createdAt)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -562,60 +1096,90 @@ function AdminPortal({ onExit }) {
 
           {activeTab === 'leads' && (
             <div className="fadein">
-              <div style={{ marginBottom: 24 }}>
-                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Lead Management Pipeline</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live data from Firestore.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Leads & Pipeline</h1>
+                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{filteredLeads.length} of {leads.length} leads</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    placeholder="Search name, email, business…"
+                    value={search} onChange={e => setSearch(e.target.value)}
+                    className="select-sm" style={{ padding: '8px 12px', minWidth: 220, fontSize: 13 }}
+                  />
+                  <select className="select-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '8px 12px', fontSize: 13 }}>
+                    <option value="all">All statuses</option>
+                    <option value="active">Active only</option>
+                    <option value="New lead">New lead</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Discussion underway">Discussion underway</option>
+                    <option value="Quotation sent">Quotation sent</option>
+                    <option value="Follow up">Follow up</option>
+                    <option value="Converted to customer">Converted</option>
+                    <option value="Not interested">Not interested</option>
+                  </select>
+                </div>
               </div>
 
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 950 }}>
                     <thead>
                       <tr>
                         <th className="table-th">User</th>
                         <th className="table-th">Intent</th>
-                        <th className="table-th">Service Interest</th>
-                        <th className="table-th">Date Joined</th>
+                        <th className="table-th">Service</th>
+                        <th className="table-th">Score</th>
+                        <th className="table-th">Added</th>
                         <th className="table-th">Status</th>
                         <th className="table-th">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {leads.length === 0 ? (
-                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No leads found.</td></tr>
-                      ) : leads.map(lead => (
-                        <tr key={lead.id}>
-                          <td className="table-td">
-                            <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
-                            <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
-                            {lead.business !== '-' && <div style={{ fontSize: 11, color: '#E8730F', fontWeight: 600, marginTop: 2 }}>{lead.business}</div>}
-                          </td>
-                          <td className="table-td" style={{ fontSize: 12, maxWidth: 200, whiteSpace: 'normal' }}>{lead.intent}</td>
-                          <td className="table-td"><span style={{ background: '#F1F5F9', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{lead.service}</span></td>
-                          <td className="table-td" style={{ fontSize: 12 }}>{lead.createdAt ? new Date(lead.createdAt.toDate()).toLocaleDateString('en-GB') : 'Just now'}</td>
-                          <td className="table-td">
-                            <span className={`status-badge ${
-                              lead.status === 'New lead' ? 'status-new' :
-                              lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
-                              lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
-                              lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
-                            }`}>
-                              {lead.status}
-                            </span>
-                          </td>
-                          <td className="table-td">
-                            <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
-                              <option value="New lead">New lead</option>
-                              <option value="Contacted">Contacted</option>
-                              <option value="Discussion underway">Discussion underway</option>
-                              <option value="Quotation sent">Quotation sent</option>
-                              <option value="Follow up">Follow-up later</option>
-                              <option value="Converted to customer">Converted to customer</option>
-                              <option value="Not interested">Not interested</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredLeads.length === 0 ? (
+                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No matching leads.</td></tr>
+                      ) : filteredLeads.map(lead => {
+                        const s = scoreFor(lead);
+                        return (
+                          <tr key={lead.id}>
+                            <td className="table-td">
+                              <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
+                              {lead.business !== '-' && <div style={{ fontSize: 11, color: '#E8730F', fontWeight: 600, marginTop: 2 }}>{lead.business}</div>}
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12, maxWidth: 200, whiteSpace: 'normal' }}>{lead.intent}</td>
+                            <td className="table-td">
+                              <span style={{ background: '#F1F5F9', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{lead.service}</span>
+                            </td>
+                            <td className="table-td">
+                              <span className={`score-pill ${scoreClass(s)}`}>{scoreLabel(s)} · {s}</span>
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>
+                              {fmtDate(lead.createdAt)}
+                              <div style={{ fontSize: 10.5, marginTop: 2 }}>{timeAgo(lead.createdAt)}</div>
+                            </td>
+                            <td className="table-td">
+                              <span className={`status-badge ${
+                                lead.status === 'New lead' ? 'status-new' :
+                                lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
+                                lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
+                                lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
+                              }`}>{lead.status}</span>
+                            </td>
+                            <td className="table-td">
+                              <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
+                                <option value="New lead">New lead</option>
+                                <option value="Contacted">Contacted</option>
+                                <option value="Discussion underway">Discussion underway</option>
+                                <option value="Quotation sent">Quotation sent</option>
+                                <option value="Follow up">Follow up</option>
+                                <option value="Converted to customer">Converted to customer</option>
+                                <option value="Not interested">Not interested</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -626,64 +1190,144 @@ function AdminPortal({ onExit }) {
           {activeTab === 'visitors' && (
             <div className="fadein">
               <div style={{ marginBottom: 24 }}>
-                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Visitor Activity Tracker</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Real-time stream of every device that lands on the page — even if they don't submit.</p>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Visitor Tracker</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Every device that lands on your page — even if they don't submit. {kpis.onlineNow} online now.</p>
               </div>
 
               <div className="card">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {visitorData.length === 0 ? (
                     <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>No visitors recorded yet.</div>
-                  ) : visitorData.map(visitor => (
-                    <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
-                      <div 
-                        onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)}
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: '#F8FAFC', cursor: 'pointer' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(232,115,15,0.1)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
-                            <i className="fas fa-user-secret"></i>
-                          </span>
-                          <div>
-                            <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#0A1F12' }}>{visitor.id}</div>
-                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                              {visitor.events.length} action{visitor.events.length !== 1 ? 's' : ''} · Last active: {new Date(visitor.lastSeen).toLocaleTimeString()}
+                  ) : visitorData.map(visitor => {
+                    const isOnline = (Date.now() - visitor.lastSeen) < 3 * 60 * 1000;
+                    return (
+                      <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+                        <div
+                          onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F8FAFC', cursor: 'pointer', gap: 12 }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                            <span style={{ width: 40, height: 40, borderRadius: '50%', background: isOnline ? 'rgba(34,197,94,.12)' : 'rgba(232,115,15,0.1)', color: isOnline ? '#16a34a' : '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, position: 'relative' }}>
+                              <i className={`fas ${isOnline ? 'fa-signal' : 'fa-user-secret'}`}></i>
+                            </span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12.5, fontWeight: 700, color: '#0A1F12', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                {visitor.id}
+                                {isOnline && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.12)', padding: '2px 7px', borderRadius: 6 }}>
+                                    <span className="live-dot" style={{ width: 5, height: 5 }}></span> ONLINE
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>
+                                {visitor.device?.browser || '—'} · {visitor.device?.os || '—'} · {visitor.device?.device || '—'}
+                                {' · '}
+                                {visitor.events.length} action{visitor.events.length !== 1 ? 's' : ''}
+                                {' · '}
+                                {visitor.sessionCount} session{visitor.sessionCount !== 1 ? 's' : ''}
+                                {' · '}
+                                last {timeAgo(visitor.lastSeen)}
+                              </div>
                             </div>
                           </div>
+                          <i className={`fas fa-chevron-${selectedVisitor === visitor.id ? 'up' : 'down'}`} style={{ color: '#94A3B8', flexShrink: 0 }}></i>
                         </div>
-                        <i className={`fas fa-chevron-${selectedVisitor === visitor.id ? 'up' : 'down'}`} style={{ color: '#94A3B8' }}></i>
-                      </div>
-                      
-                      {selectedVisitor === visitor.id && (
-                        <div style={{ padding: '20px', background: '#fff', borderTop: '1px solid #E2E8F0' }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 12 }}>Activity Timeline</div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                            {visitor.events.map((e, i) => (
-                              <div key={e.id} style={{ display: 'flex', gap: 16, paddingBottom: 16, position: 'relative' }}>
-                                {i !== visitor.events.length - 1 && (
-                                  <div style={{ position: 'absolute', left: 11, top: 24, bottom: 0, width: 2, background: '#E2E8F0' }} />
-                                )}
-                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#E8730F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, zIndex: 1 }}>
-                                  <i className="fas fa-check"></i>
+
+                        {selectedVisitor === visitor.id && (
+                          <div style={{ padding: 20, background: '#fff', borderTop: '1px solid #E2E8F0' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 18 }}>
+                              {[
+                                { label: 'Browser', val: visitor.device?.browser },
+                                { label: 'OS', val: visitor.device?.os },
+                                { label: 'Device', val: visitor.device?.device },
+                                { label: 'Screen', val: visitor.device?.screen },
+                                { label: 'Timezone', val: visitor.device?.timezone },
+                                { label: 'Referrer', val: visitor.device?.referrer }
+                              ].map((item, i) => (
+                                <div key={i} style={{ background: '#F8FAFC', borderRadius: 8, padding: '10px 12px' }}>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</div>
+                                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.val || '—'}</div>
                                 </div>
-                                <div>
-                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ').toUpperCase()}</div>
-                                  {e.details && Object.keys(e.details).length > 0 && (
-                                    <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
-                                      {Object.entries(e.details).map(([k, v]) => <span key={k} style={{ marginRight: 12 }}><strong>{k}:</strong> {v}</span>)}
-                                    </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 12 }}>Activity Timeline</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                              {visitor.events.map((e, i) => (
+                                <div key={e.id} style={{ display: 'flex', gap: 14, paddingBottom: 14, position: 'relative' }}>
+                                  {i !== visitor.events.length - 1 && (
+                                    <div style={{ position: 'absolute', left: 11, top: 24, bottom: 0, width: 2, background: '#E2E8F0' }} />
                                   )}
-                                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
-                                    {e.createdAt ? new Date(e.createdAt.toDate()).toLocaleString() : 'Just now'}
+                                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#E8730F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0, zIndex: 1 }}>
+                                    <i className={`fas ${e.action === 'form_submitted' ? 'fa-user-plus' : e.action === 'heartbeat' ? 'fa-heart' : e.action === 'identify' ? 'fa-id-card' : 'fa-check'}`}></i>
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ').toUpperCase()}</div>
+                                    {e.details && Object.keys(e.details).length > 0 && (
+                                      <div style={{ fontSize: 11.5, color: '#475569', marginTop: 2 }}>
+                                        {Object.entries(e.details).map(([k, v]) => <span key={k} style={{ marginRight: 10 }}><strong>{k}:</strong> {String(v)}</span>)}
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 2 }}>
+                                      {e.createdAt ? new Date(e.createdAt.toDate()).toLocaleString() : 'Just now'}
+                                      {' · '}
+                                      session {e.sessionId?.slice(-6) || '—'}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="fadein">
+              <div style={{ marginBottom: 24 }}>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Settings</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Portal preferences and demo tools.</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Notifications</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Sound alerts when a new lead arrives.</p>
+                  <button onClick={() => setSoundOn(!soundOn)} className={`btn ${soundOn ? 'btn-primary' : 'btn-outline'}`}>
+                    <i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i> Sound is {soundOn ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Data Export</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Download all leads as CSV.</p>
+                  <button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline">
+                    <i className="fas fa-download"></i> Export {leads.length} leads
+                  </button>
+                </div>
+
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Demo Data</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Populate the portal with sample leads + events tagged <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>[DEMO]</code>.</p>
+                  <button onClick={seedDemo} disabled={seeding} className="btn btn-primary">
+                    <i className={`fas ${seeding ? 'fa-spinner fa-spin' : 'fa-flask'}`}></i> {seeding ? 'Seeding…' : 'Seed demo data'}
+                  </button>
+                </div>
+
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Tracker Status</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 12px' }}>Unified cross-platform tracker.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(34,197,94,.1)', borderRadius: 8, fontSize: 12.5, fontWeight: 700, color: '#0F5C2A' }}>
+                    <span className="live-dot"></span>
+                    {window.SE && window.SE.visitorId ? 'Active — visitor ID: ' + window.SE.visitorId.substring(0, 15) + '…' : 'Not loaded'}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0', lineHeight: 1.5 }}>
+                    View your full cross-platform journey at the <strong>Unified Visitor Intelligence</strong> dashboard.
+                  </p>
                 </div>
               </div>
             </div>
@@ -695,20 +1339,24 @@ function AdminPortal({ onExit }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MAIN APP COMPONENT
+   MAIN APP
    ═══════════════════════════════════════════════════════════════════ */
 function App() {
   const [view, setView] = useState('public');
+  const [adminAuthed, setAdminAuthed] = useState(() => {
+    try { return localStorage.getItem('se_admin_auth') === '1'; } catch(e) { return false; }
+  });
 
-  return (
-    <>
-      {view === 'public' ? (
-        <OnboardingForm onAdminClick={() => setView('admin')} />
-      ) : (
-        <AdminPortal onExit={() => setView('public')} />
-      )}
-    </>
-  );
+  const goAdmin = () => setView('admin');
+  const exitAdmin = () => { setView('public'); };
+
+  if (view === 'public') {
+    return <OnboardingForm onAdminClick={goAdmin} />;
+  }
+  if (!adminAuthed) {
+    return <AdminLogin onUnlock={() => setAdminAuthed(true)} onExit={exitAdmin} />;
+  }
+  return <AdminPortal onExit={exitAdmin} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
