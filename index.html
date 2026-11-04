@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Onboarding & User Intelligence | StartEasy Zambia</title>
+<title>Onboarding & Lead Intelligence | StartEasy Zambia</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
@@ -28,7 +27,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 @keyframes fi { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 /* ─── PUBLIC ONBOARDING STYLES ─── */
-.site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; }
+.site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
 .header-content { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 24px; }
 .logo-group { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; }
 .logo-mark { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg,#E8730F,#F5A623); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; font-family: 'Playfair Display', serif; flex-shrink:0;}
@@ -118,7 +117,33 @@ const firebaseConfig = {
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+if(auth) auth.signInAnonymously().catch(e=>console.warn("Anon auth:", e));
+
 const WHATSAPP_NUMBER = '260762499581';
+
+/* ─── VISITOR TRACKING UTILITIES ─── */
+function getVisitorId() {
+  try {
+    let vid = localStorage.getItem('se_visitor_id');
+    if (!vid) {
+      vid = 'v_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem('se_visitor_id', vid);
+    }
+    return vid;
+  } catch(e) { return 'v_unknown'; }
+}
+
+async function trackEvent(action, details = {}) {
+  try {
+    await db.collection('se_events').add({
+      visitorId: getVisitorId(),
+      action,
+      details,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { console.warn("Tracking failed", e); }
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    PUBLIC ONBOARDING FORM
@@ -130,9 +155,15 @@ function OnboardingForm({ onAdminClick }) {
   const [email, setEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [details, setDetails] = useState('');
+  
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Track page view on load
+  useEffect(() => {
+    trackEvent('page_view', { page: 'onboarding' });
+  }, []);
 
   const intentOptions = [
     "I need business or administrative services",
@@ -156,6 +187,7 @@ function OnboardingForm({ onAdminClick }) {
     setIntent(opt);
     setQ2Answer('');
     setError('');
+    trackEvent('intent_selected', { intent: opt });
   };
 
   const handleSubmit = async (e) => {
@@ -181,18 +213,14 @@ function OnboardingForm({ onAdminClick }) {
         business: businessName || '-',
         details: details || '',
         status: 'New lead',
+        visitorId: getVisitorId(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       
       await db.collection('se_leads').add(leadPayload);
 
-      // 2. Log Activity (se_activities)
-      await db.collection('se_activities').add({
-        user: fullName,
-        event: 'onboarding_completed',
-        detail: `Selected ${q2Answer}`,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // 2. Log Activity 
+      await trackEvent('form_submitted', { name: fullName, service: q2Answer });
 
       // 3. Success & Open WhatsApp
       setSuccess(true);
@@ -301,7 +329,6 @@ function OnboardingForm({ onAdminClick }) {
 
             {renderQ2()}
 
-            {/* NEW REQUIRED FIELDS FOR CRM */}
             <div style={{ marginBottom: 24 }}>
               <label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label>
               <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
@@ -337,43 +364,39 @@ function OnboardingForm({ onAdminClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL: User & Lead Intelligence (LIVE FIRESTORE)
+   ADMIN PORTAL: User & Lead Intelligence
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // Live Data States
   const [leads, setLeads] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedVisitor, setSelectedVisitor] = useState(null);
 
   // Fetch Real Data from Firestore
   useEffect(() => {
     const unsubLeads = db.collection('se_leads')
       .orderBy('createdAt', 'desc')
       .onSnapshot(snap => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setLeads(data);
+        setLeads(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       }, err => console.error("Error fetching leads:", err));
 
-    const unsubActivity = db.collection('se_activities')
+    const unsubEvents = db.collection('se_events')
       .orderBy('createdAt', 'desc')
-      .limit(20)
+      .limit(500)
       .onSnapshot(snap => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setActivities(data);
+        setEvents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         setLoading(false);
-      }, err => console.error("Error fetching activities:", err));
+      }, err => console.error("Error fetching events:", err));
 
-    return () => { unsubLeads(); unsubActivity(); };
+    return () => { unsubLeads(); unsubEvents(); };
   }, []);
 
-  // Update Status in Firestore
   const updateLeadStatus = async (id, newStatus) => {
     try {
       await db.collection('se_leads').doc(id).update({ status: newStatus });
-      // Optimistically update UI (Firestore onSnapshot will also catch it)
       setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
     } catch (err) {
       console.error("Error updating status:", err);
@@ -381,43 +404,37 @@ function AdminPortal({ onExit }) {
     }
   };
 
-  // Test function to create a lead directly from Admin
-  const simulateNewLead = async () => {
-    const names = ['Test User 1', 'Test User 2', 'Chanda M', 'Grace B'];
-    const interests = ['Financial Support', 'Business Registration', 'Supplier partnership', 'Venture Building'];
-    const name = names[Math.floor(Math.random() * names.length)];
-    const service = interests[Math.floor(Math.random() * interests.length)];
-
-    try {
-      await db.collection('se_leads').add({
-        name: name,
-        email: 'test@example.com',
-        intent: 'I am an entrepreneur or business owner',
-        service: service,
-        business: 'Simulated Biz',
-        details: 'This is a simulated test lead.',
-        status: 'New lead',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await db.collection('se_activities').add({
-        user: name,
-        event: 'account_created',
-        detail: 'Simulated registration via Admin',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // KPI Calculations based on REAL Data
+  // KPI Calculations
   const kpis = useMemo(() => {
-    const total = leads.length;
-    const enquiries = leads.length; // Assuming every lead is an enquiry for now
+    const totalLeads = leads.length;
+    const enquiries = leads.filter(l => l.status !== 'New lead').length;
     const qualified = leads.filter(l => l.status === 'Review' || l.status === 'Discussion underway').length;
     const followups = leads.filter(l => l.status === 'Follow up' || l.status === 'New lead').length;
-    return { total, enquiries, qualified, followups };
-  }, [leads]);
+    
+    // Unique Visitors
+    const uniqueVisitors = new Set(events.map(e => e.visitorId).filter(Boolean)).size;
+    
+    return { totalLeads, enquiries, qualified, followups, uniqueVisitors };
+  }, [leads, events]);
+
+  // Group Events by Visitor
+  const visitorData = useMemo(() => {
+    const byVisitor = {};
+    events.forEach(e => {
+      if (!e.visitorId) return;
+      if (!byVisitor[e.visitorId]) {
+        byVisitor[e.visitorId] = { id: e.visitorId, events: [], firstSeen: e.createdAt, lastSeen: e.createdAt };
+      }
+      byVisitor[e.visitorId].events.push(e);
+      // Update timestamps
+      const ts = e.createdAt?.toMillis ? e.createdAt.toMillis() : Date.now();
+      if (ts > byVisitor[e.visitorId].lastSeen) byVisitor[e.visitorId].lastSeen = ts;
+      if (ts < byVisitor[e.visitorId].firstSeen) byVisitor[e.visitorId].firstSeen = ts;
+    });
+    // Sort events inside each visitor group (newest first)
+    Object.values(byVisitor).forEach(v => v.events.sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
+    return Object.values(byVisitor).sort((a,b) => b.lastSeen - a.lastSeen);
+  }, [events]);
 
   if (loading) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}><i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i></div>;
@@ -448,15 +465,12 @@ function AdminPortal({ onExit }) {
           <div className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); setSidebarOpen(false); }}>
             <i className="fas fa-filter"></i> Leads & Pipeline
           </div>
-          <div className={`nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => { setActiveTab('activity'); setSidebarOpen(false); }}>
-            <i className="fas fa-bolt"></i> Live Activity Feed
+          <div className={`nav-item ${activeTab === 'visitors' ? 'active' : ''}`} onClick={() => { setActiveTab('visitors'); setSidebarOpen(false); }}>
+            <i className="fas fa-users-viewfinder"></i> Visitor Tracker
           </div>
         </div>
         
         <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={simulateNewLead} className="btn btn-outline" style={{ width: '100%', fontSize: 12, padding: '10px', marginBottom: 12 }}>
-            <i className="fas fa-plus"></i> Generate Test Lead
-          </button>
           <button onClick={onExit} className="btn" style={{ width: '100%', fontSize: 12, padding: '10px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
             <i className="fas fa-arrow-left"></i> Exit to Public Form
           </button>
@@ -468,17 +482,15 @@ function AdminPortal({ onExit }) {
           
           {activeTab === 'dashboard' && (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
-                <div>
-                  <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1>
-                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live data from Firestore. Track platform adoption and commercial opportunities.</p>
-                </div>
+              <div style={{ marginBottom: 32 }}>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live data from Firestore. Track platform adoption and commercial opportunities.</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
                 {[
-                  { label: 'Registered Users', val: kpis.total, icon: 'fa-users', color: '#1B6CA8' },
-                  { label: 'Service Enquiries', val: kpis.enquiries, icon: 'fa-comments', color: '#E8730F' },
+                  { label: 'Registered Leads', val: kpis.totalLeads, icon: 'fa-user-check', color: '#1B6CA8' },
+                  { label: 'Total Visitors', val: kpis.uniqueVisitors, icon: 'fa-users-viewfinder', color: '#E8730F' },
                   { label: 'Potential Customers', val: kpis.qualified, icon: 'fa-bullseye', color: '#1E7B3C' },
                   { label: 'Follow-ups Required', val: kpis.followups, icon: 'fa-clock', color: '#B8564F' }
                 ].map((kpi, i) => (
@@ -494,46 +506,6 @@ function AdminPortal({ onExit }) {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
-                <div className="card">
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', marginBottom: 20 }}>Conversion Funnel</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {[
-                      { label: 'Anonymous Visitors', val: 1240, pct: 100, color: '#E2E8F0', desc: 'Visited without registering' },
-                      { label: 'Registered Accounts', val: kpis.total, pct: Math.max(5, (kpis.total/1240)*100), color: '#93C5FD', desc: 'Created an account' },
-                      { label: 'Engaged Prospects', val: kpis.enquiries, pct: Math.max(2, (kpis.enquiries/1240)*100), color: '#FDBA74', desc: 'Requested a quote or enquiry' },
-                      { label: 'Qualified Leads', val: kpis.qualified, pct: Math.max(1, (kpis.qualified/1240)*100), color: '#86EFAC', desc: 'Discussion underway' },
-                      { label: 'Paying Customers', val: 0, pct: 1, color: '#1E7B3C', desc: 'Purchased a service' }
-                    ].map((stage, i) => (
-                      <div key={i}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                          <span>{stage.label} <span style={{fontSize:11, fontWeight:400, color:'#94A3B8'}}>({stage.desc})</span></span>
-                          <span>{stage.val}</span>
-                        </div>
-                        <div style={{ width: '100%', height: 12, background: '#F1F5F9', borderRadius: 99, overflow: 'hidden' }}>
-                          <div style={{ width: `${stage.pct}%`, height: '100%', background: stage.color, borderRadius: 99, transition: 'width 1s ease' }}></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="card">
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', marginBottom: 20 }}>Recent Activity</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {activities.length === 0 ? <p style={{ fontSize: 13, color: '#94A3B8' }}>No activity yet.</p> : activities.slice(0, 5).map(act => (
-                      <div key={act.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E8730F', marginTop: 6, flexShrink: 0 }}></span>
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0A1F12' }}>{act.user}</div>
-                          <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{act.event.replace(/_/g, ' ')} — {act.detail}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3>
@@ -545,12 +517,12 @@ function AdminPortal({ onExit }) {
                         <th className="table-th">User</th>
                         <th className="table-th">Interest</th>
                         <th className="table-th">Status</th>
-                        <th className="table-th">Action (Lightweight CRM)</th>
+                        <th className="table-th">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leads.length === 0 ? (
-                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No leads yet. Use the public form or click "Generate Test Lead".</td></tr>
+                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No leads yet. Use the public form to test.</td></tr>
                       ) : leads.slice(0, 5).map(lead => (
                         <tr key={lead.id}>
                           <td className="table-td">
@@ -651,32 +623,65 @@ function AdminPortal({ onExit }) {
             </div>
           )}
 
-          {activeTab === 'activity' && (
+          {activeTab === 'visitors' && (
             <div className="fadein">
               <div style={{ marginBottom: 24 }}>
-                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Live Activity Tracker</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Real-time event stream from Firestore.</p>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Visitor Activity Tracker</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Real-time stream of every device that lands on the page — even if they don't submit.</p>
               </div>
 
               <div className="card">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {activities.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>No activity recorded yet.</div>
-                  ) : activities.map((act, i) => (
-                    <div key={act.id} style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: i < activities.length - 1 ? '1px solid #F1F5F9' : 'none', alignItems: 'center' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(232,115,15,0.1)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <i className="fas fa-bolt"></i>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: '#0A1F12' }}>{act.user}</span>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>{act.createdAt ? new Date(act.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {visitorData.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>No visitors recorded yet.</div>
+                  ) : visitorData.map(visitor => (
+                    <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
+                      <div 
+                        onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: '#F8FAFC', cursor: 'pointer' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(232,115,15,0.1)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                            <i className="fas fa-user-secret"></i>
+                          </span>
+                          <div>
+                            <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#0A1F12' }}>{visitor.id}</div>
+                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                              {visitor.events.length} action{visitor.events.length !== 1 ? 's' : ''} · Last active: {new Date(visitor.lastSeen).toLocaleTimeString()}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ fontSize: 13, color: '#475569' }}>
-                          <span style={{ fontWeight: 700, color: '#E8730F', fontFamily: 'monospace', fontSize: 12, marginRight: 8 }}>{act.event}</span>
-                          {act.detail}
-                        </div>
+                        <i className={`fas fa-chevron-${selectedVisitor === visitor.id ? 'up' : 'down'}`} style={{ color: '#94A3B8' }}></i>
                       </div>
+                      
+                      {selectedVisitor === visitor.id && (
+                        <div style={{ padding: '20px', background: '#fff', borderTop: '1px solid #E2E8F0' }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 12 }}>Activity Timeline</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            {visitor.events.map((e, i) => (
+                              <div key={e.id} style={{ display: 'flex', gap: 16, paddingBottom: 16, position: 'relative' }}>
+                                {i !== visitor.events.length - 1 && (
+                                  <div style={{ position: 'absolute', left: 11, top: 24, bottom: 0, width: 2, background: '#E2E8F0' }} />
+                                )}
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#E8730F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, zIndex: 1 }}>
+                                  <i className="fas fa-check"></i>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ').toUpperCase()}</div>
+                                  {e.details && Object.keys(e.details).length > 0 && (
+                                    <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
+                                      {Object.entries(e.details).map(([k, v]) => <span key={k} style={{ marginRight: 12 }}><strong>{k}:</strong> {v}</span>)}
+                                    </div>
+                                  )}
+                                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                                    {e.createdAt ? new Date(e.createdAt.toDate()).toLocaleString() : 'Just now'}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
