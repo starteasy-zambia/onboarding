@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Onboarding & Lead Intelligence | StartEasy Zambia</title>
+<title>Onboarding, CRM & Intelligence | StartEasy Zambia</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,6 +95,10 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .toast { animation: slideIn .35s cubic-bezier(.2,.8,.2,1); }
 .toast-exit { animation: slideOut .3s ease forwards; }
 
+/* Drawer Animation */
+.drawer-enter { animation: slideInRight .3s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
 /* Public onboarding */
 .site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
 .header-content { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 24px; }
@@ -137,17 +141,29 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .nav-item.active { background: rgba(245,166,35,0.1); color: #F5A623; border-left-color: #F5A623; }
 
 .mobile-toggle { display: none; position: fixed; top: 16px; left: 16px; z-index: 60; background: #0A1F12; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(10,31,18,0.6); backdrop-filter: blur(2px); z-index: 45; }
 
 .card { background: #fff; border-radius: 12px; border: 1px solid #E2E8F0; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
 .kpi-value { font-size: 32px; font-weight: 800; color: #0A1F12; line-height: 1.1; margin-top: 8px; font-variant-numeric: tabular-nums; }
 .table-th { text-align: left; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; font-weight: 800; color: #64748B; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; }
 .table-td { padding: 16px; border-bottom: 1px solid #F1F5F9; color: #1E293B; font-weight: 500; vertical-align: middle; font-size: 13.5px; }
 .status-badge { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; display: inline-block; }
+
+/* CRM Status Colors */
 .status-new { background: #E0F2FE; color: #0284C7; }
 .status-contacted { background: #FEF3C7; color: #D97706; }
-.status-qualified { background: #F3E8FF; color: #7E22CE; }
-.status-converted { background: #1E7B3C; color: #fff; }
-.status-lost { background: #FEE2E2; color: #DC2626; }
+.status-discussion { background: #F3E8FF; color: #7E22CE; }
+.status-quotation { background: #FFEDD5; color: #C2410C; }
+.status-converted { background: #DCFCE7; color: #15803D; }
+.status-not-interested { background: #FEE2E2; color: #DC2626; }
+.status-followup { background: #F1F5F9; color: #475569; }
+
+/* Kanban Board */
+.kanban-col { background: #F1F5F9; border-radius: 12px; padding: 12px; min-height: 200px; display: flex; flex-direction: column; gap: 10px; width: 290px; flex-shrink: 0; border: 2px dashed transparent; transition: all 0.2s; }
+.kanban-col.drag-over { background: #E2E8F0; border-color: #E8730F; }
+.kanban-card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: grab; border: 1px solid #E2E8F0; transition: transform 0.15s; }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card:hover { transform: translateY(-2px); border-color: #E8730F; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: all .2s; }
 .btn-primary { background: linear-gradient(135deg,#E8730F,#F5A623); color: #fff; box-shadow: 0 4px 12px rgba(232,115,15,.3); }
@@ -163,9 +179,14 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .score-warm { background: #FEF3C7; color: #D97706; }
 .score-cold { background: #E0E7FF; color: #4338CA; }
 
+.priority-hot { color: #DC2626; background: #FEE2E2; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+.priority-warm { color: #D97706; background: #FEF3C7; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+.priority-cold { color: #0284C7; background: #E0F2FE; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+
 @media (max-width: 1024px) {
   .admin-sidebar { transform: translateX(-100%); }
   .admin-sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.open { display: block; }
   .admin-content { margin-left: 0; padding: 72px 16px 32px; }
   .mobile-toggle { display: flex; }
 }
@@ -194,6 +215,17 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 const WHATSAPP_NUMBER = '260762499581';
+
+/* ─── CRM STATUSES ─── */
+const CRM_STATUSES = [
+  { id: 'New lead', label: 'New lead', color: 'status-new' },
+  { id: 'Contacted', label: 'Contacted', color: 'status-contacted' },
+  { id: 'Discussion underway', label: 'Discussion', color: 'status-discussion' },
+  { id: 'Quotation sent', label: 'Quotation sent', color: 'status-quotation' },
+  { id: 'Converted to customer', label: 'Converted', color: 'status-converted' },
+  { id: 'Follow-up later', label: 'Follow-up', color: 'status-followup' },
+  { id: 'Not interested', label: 'Not interested', color: 'status-not-interested' }
+];
 
 /* ─── VISITOR TRACKING ─── */
 function getVisitorId() {
@@ -319,10 +351,11 @@ function playBeep() {
   } catch(e) {}
 }
 function exportLeadsCSV(leads) {
-  const headers = ['Name','Email','Business','Intent','Service','Status','Details','Created'];
+  const headers = ['Name','Email','Phone','Business','Intent','Service','Status','Quoted Amount','Follow-up Date','Created'];
   const rows = leads.map(l => [
-    l.name||'', l.email||'', l.business||'', l.intent||'', l.service||'',
-    l.status||'', l.details||'', l.createdAt ? (l.createdAt.toDate ? new Date(l.createdAt.toDate()).toISOString() : new Date(l.createdAt).toISOString()) : ''
+    l.name||'', l.email||'', l.phone||'', l.business||'', l.intent||'', l.service||'',
+    l.status||'', l.quotedAmount||0, l.followUpDate ? new Date(l.followUpDate).toISOString() : '', 
+    l.createdAt ? (l.createdAt.toDate ? new Date(l.createdAt.toDate()).toISOString() : new Date(l.createdAt).toISOString()) : ''
   ]);
   const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -350,13 +383,14 @@ function KpiCard({ label, val, icon, color, sub }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PUBLIC ONBOARDING FORM
+   PUBLIC ONBOARDING FORM (Now with Phone)
    ═══════════════════════════════════════════════════════════════════ */
 function OnboardingForm({ onAdminClick }) {
   const [intent, setIntent] = useState('');
   const [q2Answer, setQ2Answer] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
@@ -426,8 +460,9 @@ function OnboardingForm({ onAdminClick }) {
     
     try {
       await db.collection('se_leads').add({
-        name: fullName, email: email, intent: intent, service: q2Answer,
+        name: fullName, email: email, phone: phone || '-', intent: intent, service: q2Answer,
         business: businessName || '-', details: details || '', status: 'New lead',
+        notes: [], quotedAmount: 0, followUpDate: null, priority: 'Warm',
         visitorId: getVisitorId(), sessionId: getSessionId(), device: DEVICE_INFO,
         createdAt: Date.now()
       });
@@ -437,7 +472,7 @@ function OnboardingForm({ onAdminClick }) {
       if (window.SE && typeof window.SE.identify === 'function') {
         window.SE.identify({
           email: email, name: fullName, role: 'lead',
-          intent: intent, service: q2Answer, business: businessName || null
+          intent: intent, service: q2Answer, business: businessName || null, phone
         });
       }
 
@@ -445,7 +480,8 @@ function OnboardingForm({ onAdminClick }) {
       
       const message = `*STARTEASY ONBOARDING*%0A%0A` +
         `*Name:* ${fullName}%0A` +
-        `*Email:* ${email}%0A%0A` +
+        `*Email:* ${email}%0A` +
+        `*Phone:* ${phone || 'N/A'}%0A%0A` +
         `*1. Intent:*%0A${intent}%0A%0A` +
         `*2. Details:*%0A${q2Answer}%0A%0A` +
         `*3. Business:*%0A${businessName || 'N/A'}%0A%0A` +
@@ -453,7 +489,7 @@ function OnboardingForm({ onAdminClick }) {
 
       setTimeout(() => {
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
-        setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setBusinessName(''); setDetails('');
+        setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setPhone(''); setBusinessName(''); setDetails('');
         setSuccess(false); setSubmitting(false);
       }, 1500);
 
@@ -555,20 +591,26 @@ function OnboardingForm({ onAdminClick }) {
 
             {renderQ2()}
 
-            <div style={{ marginBottom: 24 }}>
-              <label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label>
-              <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onFocus={() => onFieldFocus('name')} onChange={(e) => setFullName(e.target.value)} required />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+              <div>
+                <label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label>
+                <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onFocus={() => onFieldFocus('name')} onChange={(e) => setFullName(e.target.value)} required />
+              </div>
+              <div>
+                <label className="form-label">4. Phone Number</label>
+                <input type="tel" className="form-input" placeholder="+260 ..." value={phone} onFocus={() => onFieldFocus('phone')} onChange={(e) => setPhone(e.target.value)} />
+              </div>
             </div>
             <div style={{ marginBottom: 24 }}>
-              <label className="form-label">4. Email Address <span style={{ color: 'var(--red)' }}>*</span></label>
+              <label className="form-label">5. Email Address <span style={{ color: 'var(--red)' }}>*</span></label>
               <input type="email" className="form-input" placeholder="you@company.com" value={email} onFocus={() => onFieldFocus('email')} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div style={{ marginBottom: 24 }}>
-              <label className="form-label">5. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
+              <label className="form-label">6. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
               <input type="text" className="form-input" placeholder="e.g. Acme Traders Ltd" value={businessName} onFocus={() => onFieldFocus('business')} onChange={(e) => setBusinessName(e.target.value)} />
             </div>
             <div style={{ marginBottom: 32 }}>
-              <label className="form-label">6. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
+              <label className="form-label">7. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
               <textarea className="form-input" rows={4} placeholder="Anything specific you want us to know?" value={details} onFocus={() => onFieldFocus('details')} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}></textarea>
             </div>
 
@@ -586,7 +628,7 @@ function OnboardingForm({ onAdminClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   SECURE ADMIN LOGIN (Firebase Auth)
+   SECURE ADMIN LOGIN
    ═══════════════════════════════════════════════════════════════════ */
 function AdminLogin({ onExit }) {
   const [email, setEmail] = useState('');
@@ -600,7 +642,6 @@ function AdminLogin({ onExit }) {
     setSubmitting(true);
     try {
       await auth.signInWithEmailAndPassword(email, password);
-      // The App component will detect the auth state change and render AdminPortal
     } catch (error) {
       console.error(error);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
@@ -624,24 +665,8 @@ function AdminLogin({ onExit }) {
         <form onSubmit={handleLogin}>
           {err && <div className="error-msg" style={{ marginBottom: 16 }}><i className="fas fa-exclamation-circle"></i> {err}</div>}
           
-          <input 
-            type="email" 
-            className="form-input" 
-            placeholder="admin@starteasyzambia.com" 
-            value={email} 
-            onChange={e => { setEmail(e.target.value); setErr(''); }} 
-            required 
-            style={{ marginBottom: 12 }} 
-          />
-          <input 
-            type="password" 
-            className="form-input" 
-            placeholder="Password" 
-            value={password} 
-            onChange={e => { setPassword(e.target.value); setErr(''); }} 
-            required 
-            style={{ marginBottom: 20 }} 
-          />
+          <input type="email" className="form-input" placeholder="admin@starteasyzambia.com" value={email} onChange={e => { setEmail(e.target.value); setErr(''); }} required style={{ marginBottom: 12 }} />
+          <input type="password" className="form-input" placeholder="Password" value={password} onChange={e => { setPassword(e.target.value); setErr(''); }} required style={{ marginBottom: 20 }} />
           
           <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 14 }} disabled={submitting}>
             {submitting ? <><i className="fas fa-spinner fa-spin"></i> Verifying...</> : 'Secure Login'}
@@ -654,7 +679,170 @@ function AdminLogin({ onExit }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL
+   LEAD DRAWER (Added for complete CRM functionality)
+   ═══════════════════════════════════════════════════════════════════ */
+function LeadDrawer({ lead, onClose, onUpdate }) {
+  const [noteText, setNoteText] = useState('');
+  const [status, setStatus] = useState(lead.status);
+  const [followUpDate, setFollowUpDate] = useState(lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : '');
+  const [quotedAmount, setQuotedAmount] = useState(lead.quotedAmount || '');
+  const [priority, setPriority] = useState(lead.priority || 'Warm');
+
+  const handleSave = async () => {
+    await onUpdate(lead.id, { 
+      status, 
+      priority,
+      followUpDate: followUpDate ? new Date(followUpDate).getTime() : null,
+      quotedAmount: Number(quotedAmount) || 0
+    });
+  };
+
+  const handleAddNote = async (e) => {
+    e.preventDefault();
+    if (!noteText.trim()) return;
+    const newNote = { text: noteText, createdAt: Date.now(), author: auth.currentUser?.email || 'Admin' };
+    await onUpdate(lead.id, { notes: [...(lead.notes || []), newNote] });
+    setNoteText('');
+  };
+
+  const waLink = lead.phone && lead.phone !== '-' ? `https://wa.me/${lead.phone.replace(/\D/g, '')}?text=Hi ${lead.name}, following up from StartEasy Zambia.` : null;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="drawer-enter" style={{ width: '100%', maxWidth: 500, background: '#F8FAFC', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' }}>
+        
+        {/* Header */}
+        <div style={{ background: '#0A1F12', padding: '24px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginBottom: 4 }}>Lead Profile</div>
+            <h2 className="serif" style={{ fontSize: 24, margin: 0, color: '#F5A623' }}>{lead.name}</h2>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>{lead.business} {lead.phone !== '-' && `· ${lead.phone}`}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 20, cursor: 'pointer' }}><i className="fas fa-times"></i></button>
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{ display: 'flex', gap: 10, padding: '16px 24px', background: '#fff', borderBottom: '1px solid #E2E8F0' }}>
+          {waLink ? (
+            <a href={waLink} target="_blank" rel="noreferrer" className="btn" style={{ flex: 1, background: '#25D366', color: '#fff', textDecoration: 'none' }}><i className="fab fa-whatsapp"></i> WhatsApp</a>
+          ) : (
+            <button className="btn" disabled style={{ flex: 1, background: '#E2E8F0', color: '#94A3B8' }}><i className="fab fa-whatsapp"></i> No Phone</button>
+          )}
+          <a href={`mailto:${lead.email}`} className="btn btn-outline" style={{ flex: 1, textDecoration: 'none' }}><i className="fas fa-envelope"></i> Email</a>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+          
+          {/* Deal Management */}
+          <div className="card" style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 16 }}>Deal Management</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>STATUS</label>
+                <select className="select-sm" style={{ width: '100%', padding: 10 }} value={status} onChange={(e) => setStatus(e.target.value)}>
+                  {CRM_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>PRIORITY</label>
+                <select className="select-sm" style={{ width: '100%', padding: 10 }} value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  <option value="Hot">🔥 Hot</option>
+                  <option value="Warm">☀️ Warm</option>
+                  <option value="Cold">❄️ Cold</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>QUOTED AMOUNT (K)</label>
+                <input type="number" className="form-input" style={{ padding: 10, fontSize: 13 }} value={quotedAmount} onChange={e => setQuotedAmount(e.target.value)} placeholder="0.00" />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>FOLLOW-UP DATE</label>
+                <input type="date" className="form-input" style={{ padding: 10, fontSize: 13 }} value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} />
+              </div>
+            </div>
+            <button onClick={handleSave} className="btn btn-primary" style={{ width: '100%' }}><i className="fas fa-save"></i> Update Lead</button>
+          </div>
+
+          {/* Original Inquiry Context */}
+          <div className="card" style={{ marginBottom: 24, background: '#F1F5F9' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Original Inquiry</h3>
+            <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}><strong>Intent:</strong> {lead.intent}</div>
+            <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}><strong>Service:</strong> {lead.service}</div>
+            {lead.details && <div style={{ fontSize: 13, color: '#334155', padding: 12, background: '#fff', borderRadius: 6, fontStyle: 'italic', borderLeft: '3px solid #E8730F' }}>"{lead.details}"</div>}
+            <div style={{ fontSize: 11, color: '#64748B', marginTop: 12 }}>Captured: {new Date(lead.createdAt?.toMillis ? lead.createdAt.toMillis() : lead.createdAt).toLocaleString()} via {lead.device?.browser || 'Web'}</div>
+          </div>
+
+          {/* Activity Log */}
+          <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Activity & Notes</h3>
+          
+          <form onSubmit={handleAddNote} style={{ marginBottom: 20 }}>
+            <textarea className="form-input" rows={3} placeholder="Log a call, meeting, or note..." value={noteText} onChange={e => setNoteText(e.target.value)} style={{ marginBottom: 8, fontSize: 13 }} />
+            <button type="submit" className="btn btn-outline" style={{ width: '100%', borderColor: '#E8730F', color: '#E8730F' }}><i className="fas fa-plus"></i> Add Note</button>
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {(lead.notes || []).slice().reverse().map((note, i) => (
+              <div key={i} style={{ background: '#fff', padding: 14, borderRadius: 8, border: '1px solid #E2E8F0', borderLeft: '3px solid #1B6CA8' }}>
+                <div style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }}>{note.text}</div>
+                <div style={{ fontSize: 10.5, color: '#94A3B8', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{note.author}</span>
+                  <span>{new Date(note.createdAt).toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
+            {(!lead.notes || lead.notes.length === 0) && <div style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, padding: 20 }}>No notes yet.</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CREATE LEAD MODAL (Added for manual entry)
+   ═══════════════════════════════════════════════════════════════════ */
+function CreateLeadModal({ onClose, onSave }) {
+  const [form, setForm] = useState({ name: '', email: '', phone: '', business: '', service: 'Financial Support & Management', quotedAmount: '', priority: 'Warm' });
+  const submit = (e) => { e.preventDefault(); onSave({ ...form, source: 'Manual Entry', status: 'New lead', notes: [], followUpDate: null, createdAt: Date.now(), intent: 'Manual Entry' }); };
+  
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className="card fadein" style={{ width: '100%', maxWidth: 450 }}>
+        <h2 className="serif" style={{ fontSize: 22, marginBottom: 16 }}>Add New Lead</h2>
+        <form onSubmit={submit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div><label className="form-label">Name</label><input type="text" className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+            <div><label className="form-label">Business</label><input type="text" className="form-input" value={form.business} onChange={e => setForm({ ...form, business: e.target.value })} /></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></div>
+            <div><label className="form-label">Phone</label><input type="text" className="form-input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label className="form-label">Service Interest</label>
+            <select className="form-select" value={form.service} onChange={e => setForm({ ...form, service: e.target.value })}>
+              {["Financial Support & Management","Business Registration & Compliance","Venture Building Services","Administrative Services Desk","Supplier Directory Platform","Other"].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+            <div><label className="form-label">Quoted (K)</label><input type="number" className="form-input" value={form.quotedAmount} onChange={e => setForm({ ...form, quotedAmount: e.target.value })} /></div>
+            <div><label className="form-label">Priority</label><select className="form-select" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}><option>Hot</option><option>Warm</option><option>Cold</option></select></div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Lead</button>
+            <button type="button" onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ADMIN PORTAL (Dashboard + CRM added)
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -663,11 +851,14 @@ function AdminPortal({ onExit }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedVisitor, setSelectedVisitor] = useState(null);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [showCreateLead, setShowCreateLead] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [toasts, setToasts] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [seeding, setSeeding] = useState(false);
+  const [crmView, setCrmView] = useState('list'); // 'list' or 'kanban'
 
   const [, forceTick] = useState(0);
   useEffect(() => {
@@ -711,17 +902,25 @@ function AdminPortal({ onExit }) {
     }
   }, [leads, soundOn]);
 
-  const updateLeadStatus = async (id, newStatus) => {
+  const updateLead = async (id, updates) => {
     try {
-      await db.collection('se_leads').doc(id).update({ status: newStatus });
-      setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
-    } catch (err) { console.error(err); alert("Failed to update status."); }
+      await db.collection('se_leads').doc(id).update(updates);
+      setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+      if (selectedLead && selectedLead.id === id) setSelectedLead({ ...selectedLead, ...updates });
+    } catch (err) { console.error(err); alert("Failed to update lead."); }
+  };
+
+  const createManualLead = async (data) => {
+    try {
+      await db.collection('se_leads').add(data);
+      setShowCreateLead(false);
+    } catch (err) { alert("Failed to add lead."); }
   };
 
   const kpis = useMemo(() => {
     const totalLeads = leads.length;
     const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
-    const followups = leads.filter(l => ['New lead','Follow up','Contacted'].includes(l.status)).length;
+    const followups = leads.filter(l => ['New lead','Follow-up later','Contacted'].includes(l.status)).length;
     const converted = leads.filter(l => l.status === 'Converted to customer').length;
     const weekCutoff = Date.now() - 7 * 24 * 3600 * 1000;
     const thisWeek = leads.filter(l => {
@@ -735,7 +934,9 @@ function AdminPortal({ onExit }) {
       const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; 
       if (ts > cutoff && e.visitorId) online.add(e.visitorId); 
     });
-    return { totalLeads, qualified, followups, converted, thisWeek, uniqueVisitors, onlineNow: online.size };
+    const pipelineValue = leads.filter(l => l.status !== 'Not interested' && l.status !== 'Converted to customer').reduce((acc, l) => acc + (Number(l.quotedAmount) || 0), 0);
+    
+    return { totalLeads, qualified, followups, converted, thisWeek, uniqueVisitors, onlineNow: online.size, pipelineValue };
   }, [leads, events]);
 
   const scoreFor = (lead) => {
@@ -763,11 +964,23 @@ function AdminPortal({ onExit }) {
         return (l.name || '').toLowerCase().includes(q) ||
                (l.email || '').toLowerCase().includes(q) ||
                (l.business || '').toLowerCase().includes(q) ||
+               (l.phone || '').toLowerCase().includes(q) ||
                (l.service || '').toLowerCase().includes(q);
       }
       return true;
     });
   }, [leads, search, statusFilter]);
+
+  const kanbanData = useMemo(() => {
+    const groups = {};
+    CRM_STATUSES.forEach(s => groups[s.id] = []);
+    filteredLeads.forEach(l => {
+      const st = l.status || 'New lead';
+      if (groups[st]) groups[st].push(l);
+      else groups['New lead'].push(l);
+    });
+    return groups;
+  }, [filteredLeads]);
 
   const visitorData = useMemo(() => {
     const byVisitor = {};
@@ -830,12 +1043,12 @@ function AdminPortal({ onExit }) {
     setSeeding(true);
     try {
       const demos = [
-        { name: '[DEMO] Chanda Mwale', email: 'chanda@demo.zm', business: 'Chanda Traders Ltd', intent: 'I am an entrepreneur or business owner', service: 'Business Registration & Compliance', status: 'Discussion underway', details: 'Need help registering with PACRA.' },
-        { name: '[DEMO] Thandiwe Banda', email: 'thandiwe@demo.zm', business: 'Bloom Beauty', intent: 'I need business or administrative services', service: 'Financial Support & Management', status: 'New lead', details: 'Looking for bookkeeping support.' },
-        { name: '[DEMO] Mwila Phiri', email: 'mwila@demo.zm', business: '-', intent: 'I want to become a supplier or service partner', service: 'Other', status: 'Contacted', details: 'Supplies fabric from Tanzania.' },
-        { name: '[DEMO] Kelvin Zulu', email: 'kelvin@demo.zm', business: 'Zulu Logistics', intent: 'I am interested in investment or strategic partnerships', service: 'Venture Building Services', status: 'Quotation sent', details: 'Looking for equity partners.' },
-        { name: '[DEMO] Naomi Chileshe', email: 'naomi@demo.zm', business: 'AgriCo', intent: 'I need business or administrative services', service: 'Administrative Services Desk', status: 'Converted to customer', details: 'Signed monthly retainer.' },
-        { name: '[DEMO] Brian Tembo', email: 'brian@demo.zm', business: '-', intent: 'I am exploring the platform', service: 'Other', status: 'Not interested', details: 'Just browsing.' }
+        { name: '[DEMO] Chanda Mwale', email: 'chanda@demo.zm', phone: '+260971000111', business: 'Chanda Traders Ltd', intent: 'I am an entrepreneur or business owner', service: 'Business Registration & Compliance', status: 'Discussion underway', details: 'Need help registering with PACRA.', quotedAmount: 1500, priority: 'Hot', notes: [] },
+        { name: '[DEMO] Thandiwe Banda', email: 'thandiwe@demo.zm', phone: '+260971000222', business: 'Bloom Beauty', intent: 'I need business or administrative services', service: 'Financial Support & Management', status: 'New lead', details: 'Looking for bookkeeping support.', quotedAmount: 0, priority: 'Warm', notes: [] },
+        { name: '[DEMO] Mwila Phiri', email: 'mwila@demo.zm', phone: '+260971000333', business: '-', intent: 'I want to become a supplier or service partner', service: 'Other', status: 'Contacted', details: 'Supplies fabric from Tanzania.', quotedAmount: 0, priority: 'Cold', notes: [] },
+        { name: '[DEMO] Kelvin Zulu', email: 'kelvin@demo.zm', phone: '+260971000444', business: 'Zulu Logistics', intent: 'I am interested in investment or strategic partnerships', service: 'Venture Building Services', status: 'Quotation sent', details: 'Looking for equity partners.', quotedAmount: 8000, priority: 'Hot', notes: [] },
+        { name: '[DEMO] Naomi Chileshe', email: 'naomi@demo.zm', phone: '+260971000555', business: 'AgriCo', intent: 'I need business or administrative services', service: 'Administrative Services Desk', status: 'Converted to customer', details: 'Signed monthly retainer.', quotedAmount: 2500, priority: 'Hot', notes: [] },
+        { name: '[DEMO] Brian Tembo', email: 'brian@demo.zm', phone: '+260971000666', business: '-', intent: 'I am exploring the platform', service: 'Other', status: 'Not interested', details: 'Just browsing.', quotedAmount: 0, priority: 'Cold', notes: [] }
       ];
       for (let i = 0; i < demos.length; i++) {
         await db.collection('se_leads').add({
@@ -843,7 +1056,8 @@ function AdminPortal({ onExit }) {
           visitorId: 'v_demo_' + i,
           sessionId: 's_demo_' + i,
           device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          followUpDate: null
         });
       }
       const actions = ['page_view','intent_selected','field_focus','field_focus','form_submitted'];
@@ -908,13 +1122,14 @@ function AdminPortal({ onExit }) {
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
         <i className={`fas ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
       </button>
+      <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)}></div>
 
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">S</div>
           <div>
             <div style={{ fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>StartEasy</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>User Intelligence</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>CRM & Intelligence</div>
           </div>
         </div>
 
@@ -974,7 +1189,7 @@ function AdminPortal({ onExit }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20, marginBottom: 24 }}>
                 <KpiCard label="Registered Leads" val={kpis.totalLeads} icon="fa-user-check" color="#1B6CA8" sub={`${kpis.thisWeek} this week`} />
-                <KpiCard label="Online Right Now" val={kpis.onlineNow} icon="fa-signal" color="#1E7B3C" sub="active last 3 min" />
+                <KpiCard label="Pipeline Value" val={kpis.pipelineValue} icon="fa-money-bill-trend-up" color="#E8730F" sub="Active leads" />
                 <KpiCard label="Qualified" val={kpis.qualified} icon="fa-bullseye" color="#7A4FA3" sub="discussion & beyond" />
                 <KpiCard label="Follow-ups" val={kpis.followups} icon="fa-clock" color="#B8564F" sub="need attention" />
               </div>
@@ -1074,7 +1289,7 @@ function AdminPortal({ onExit }) {
                       ) : leads.slice(0, 5).map(lead => {
                         const s = scoreFor(lead);
                         return (
-                          <tr key={lead.id}>
+                          <tr key={lead.id} onClick={() => setSelectedLead(lead)} style={{ cursor: 'pointer' }} className="hover:bg-gray-50">
                             <td className="table-td">
                               <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
                               <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
@@ -1086,9 +1301,11 @@ function AdminPortal({ onExit }) {
                             <td className="table-td">
                               <span className={`status-badge ${
                                 lead.status === 'New lead' ? 'status-new' :
-                                lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
-                                lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
-                                lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
+                                lead.status === 'Contacted' ? 'status-contacted' :
+                                lead.status === 'Discussion underway' ? 'status-discussion' :
+                                lead.status === 'Quotation sent' ? 'status-quotation' :
+                                lead.status === 'Converted to customer' ? 'status-converted' : 
+                                lead.status === 'Follow-up later' ? 'status-followup' : 'status-not-interested'
                               }`}>{lead.status}</span>
                             </td>
                             <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>{timeAgo(lead.createdAt)}</td>
@@ -1103,95 +1320,110 @@ function AdminPortal({ onExit }) {
           )}
 
           {activeTab === 'leads' && (
-            <div className="fadein">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div className="fadein" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Leads & Pipeline</h1>
-                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{filteredLeads.length} of {leads.length} leads</p>
+                  <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Sales Pipeline</h1>
+                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Value: <strong style={{ color: '#1E7B3C' }}>K{kpis.pipelineValue.toLocaleString()}</strong> · {filteredLeads.length} leads</p>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input
-                    placeholder="Search name, email, business…"
-                    value={search} onChange={e => setSearch(e.target.value)}
-                    className="select-sm" style={{ padding: '8px 12px', minWidth: 220, fontSize: 13 }}
-                  />
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button onClick={() => setShowCreateLead(true)} className="btn btn-primary"><i className="fas fa-plus"></i> New Lead</button>
+                  <input type="text" placeholder="Search..." className="form-input" style={{ width: 200, padding: '8px 12px' }} value={search} onChange={e => setSearch(e.target.value)} />
                   <select className="select-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '8px 12px', fontSize: 13 }}>
                     <option value="all">All statuses</option>
                     <option value="active">Active only</option>
-                    <option value="New lead">New lead</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Discussion underway">Discussion underway</option>
-                    <option value="Quotation sent">Quotation sent</option>
-                    <option value="Follow up">Follow up</option>
-                    <option value="Converted to customer">Converted</option>
-                    <option value="Not interested">Not interested</option>
+                    {CRM_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </select>
+                  <div style={{ background: '#E2E8F0', borderRadius: 8, padding: 4, display: 'flex' }}>
+                    <button onClick={() => setCrmView('kanban')} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: crmView === 'kanban' ? '#fff' : 'transparent', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: crmView === 'kanban' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Board</button>
+                    <button onClick={() => setCrmView('list')} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: crmView === 'list' ? '#fff' : 'transparent', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: crmView === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>List</button>
+                  </div>
                 </div>
               </div>
 
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 950 }}>
-                    <thead>
-                      <tr>
-                        <th className="table-th">User</th>
-                        <th className="table-th">Intent</th>
-                        <th className="table-th">Service</th>
-                        <th className="table-th">Score</th>
-                        <th className="table-th">Added</th>
-                        <th className="table-th">Status</th>
-                        <th className="table-th">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLeads.length === 0 ? (
-                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No matching leads.</td></tr>
-                      ) : filteredLeads.map(lead => {
-                        const s = scoreFor(lead);
-                        return (
-                          <tr key={lead.id}>
-                            <td className="table-td">
-                              <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
-                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
-                              {lead.business !== '-' && <div style={{ fontSize: 11, color: '#E8730F', fontWeight: 600, marginTop: 2 }}>{lead.business}</div>}
-                            </td>
-                            <td className="table-td" style={{ fontSize: 12, maxWidth: 200, whiteSpace: 'normal' }}>{lead.intent}</td>
-                            <td className="table-td">
-                              <span style={{ background: '#F1F5F9', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{lead.service}</span>
-                            </td>
-                            <td className="table-td">
-                              <span className={`score-pill ${scoreClass(s)}`}>{scoreLabel(s)} · {s}</span>
-                            </td>
-                            <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>
-                              {fmtDate(lead.createdAt)}
-                              <div style={{ fontSize: 10.5, marginTop: 2 }}>{timeAgo(lead.createdAt)}</div>
-                            </td>
-                            <td className="table-td">
-                              <span className={`status-badge ${
-                                lead.status === 'New lead' ? 'status-new' :
-                                lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
-                                lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
-                                lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
-                              }`}>{lead.status}</span>
-                            </td>
-                            <td className="table-td">
-                              <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
-                                <option value="New lead">New lead</option>
-                                <option value="Contacted">Contacted</option>
-                                <option value="Discussion underway">Discussion underway</option>
-                                <option value="Quotation sent">Quotation sent</option>
-                                <option value="Follow up">Follow up</option>
-                                <option value="Converted to customer">Converted to customer</option>
-                                <option value="Not interested">Not interested</option>
-                              </select>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              {crmView === 'kanban' ? (
+                <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 20, flex: 1 }}>
+                  {CRM_STATUSES.map(col => (
+                    <div key={col.id} className="kanban-col" 
+                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }} 
+                      onDragLeave={(e) => { e.currentTarget.classList.remove('drag-over'); }} 
+                      onDrop={(e) => { e.currentTarget.classList.remove('drag-over'); const leadId = e.dataTransfer.getData('text/plain'); updateLead(leadId, { status: col.id }); }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 4px' }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: '#475569' }}>{col.label}</span>
+                        <span style={{ background: '#E2E8F0', color: '#475569', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 800 }}>{kanbanData[col.id].length}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+                        {kanbanData[col.id].map(lead => (
+                          <div key={lead.id} className="kanban-card" draggable 
+                            onDragStart={(e) => { e.dataTransfer.setData('text/plain', lead.id); e.target.style.opacity = '0.5'; }} 
+                            onDragEnd={(e) => { e.target.style.opacity = '1'; }} 
+                            onClick={() => setSelectedLead(lead)}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1F12' }}>{lead.name}</div>
+                              <span className={lead.priority === 'Hot' ? 'priority-hot' : lead.priority === 'Cold' ? 'priority-cold' : 'priority-warm'}>{lead.priority || 'Warm'}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: '#64748B', marginBottom: 8 }}>{lead.business}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span className={`status-badge ${col.color}`} style={{ fontSize: 9, padding: '2px 6px' }}>{lead.service?.substring(0, 15)}...</span>
+                              {lead.quotedAmount > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#1E7B3C' }}>K{lead.quotedAmount}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
+                  <div style={{ overflowX: 'auto', height: '100%' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 950 }}>
+                      <thead>
+                        <tr>
+                          <th className="table-th">User</th>
+                          <th className="table-th">Contact</th>
+                          <th className="table-th">Service</th>
+                          <th className="table-th">Score</th>
+                          <th className="table-th">Status</th>
+                          <th className="table-th">Added</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredLeads.length === 0 ? (
+                          <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No matching leads.</td></tr>
+                        ) : filteredLeads.map(lead => {
+                          const s = scoreFor(lead);
+                          const st = CRM_STATUSES.find(x => x.id === lead.status) || CRM_STATUSES[0];
+                          return (
+                            <tr key={lead.id} onClick={() => setSelectedLead(lead)} style={{ cursor: 'pointer' }} className="hover:bg-gray-50">
+                              <td className="table-td">
+                                <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                                <div style={{ fontSize: 11, color: '#64748B' }}>{lead.business}</div>
+                              </td>
+                              <td className="table-td">
+                                <div style={{ fontSize: 12 }}>{lead.phone !== '-' ? lead.phone : 'No phone'}</div>
+                                <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
+                              </td>
+                              <td className="table-td">
+                                <span style={{ background: '#F1F5F9', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{lead.service}</span>
+                              </td>
+                              <td className="table-td">
+                                <span className={`score-pill ${scoreClass(s)}`}>{scoreLabel(s)} · {s}</span>
+                              </td>
+                              <td className="table-td">
+                                <span className={`status-badge ${st.color}`}>{st.label}</span>
+                              </td>
+                              <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>
+                                {fmtDate(lead.createdAt)}
+                                <div style={{ fontSize: 10.5, marginTop: 2 }}>{timeAgo(lead.createdAt)}</div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1210,10 +1442,7 @@ function AdminPortal({ onExit }) {
                     const isOnline = (Date.now() - visitor.lastSeen) < 3 * 60 * 1000;
                     return (
                       <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
-                        <div
-                          onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)}
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F8FAFC', cursor: 'pointer', gap: 12 }}
-                        >
+                        <div onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F8FAFC', cursor: 'pointer', gap: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                             <span style={{ width: 40, height: 40, borderRadius: '50%', background: isOnline ? 'rgba(34,197,94,.12)' : 'rgba(232,115,15,0.1)', color: isOnline ? '#16a34a' : '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, position: 'relative' }}>
                               <i className={`fas ${isOnline ? 'fa-signal' : 'fa-user-secret'}`}></i>
@@ -1342,6 +1571,10 @@ function AdminPortal({ onExit }) {
           )}
         </div>
       </main>
+
+      {/* Modals & Drawers */}
+      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={updateLead} />}
+      {showCreateLead && <CreateLeadModal onClose={() => setShowCreateLead(false)} onSave={createManualLead} />}
     </div>
   );
 }
@@ -1356,7 +1589,6 @@ function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // Listen to Firebase Auth state
     const unsub = auth.onAuthStateChanged(async (u) => {
       if (!u) {
         setUser(null);
@@ -1367,14 +1599,12 @@ function App() {
       
       setUser(u);
       
-      // Check if the logged-in user is an admin in Firestore
       try {
         const snap = await db.collection('se_admins').doc(u.uid).get();
         if (snap.exists) {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
-          // If they are logged in but not an admin, sign them out
           await auth.signOut();
         }
       } catch (err) {
@@ -1406,12 +1636,10 @@ function App() {
     return <OnboardingForm onAdminClick={goAdmin} />;
   }
 
-  // If they click "Admin Portal" but aren't logged in, show the login screen
   if (!user || !isAdmin) {
     return <AdminLogin onExit={exitAdmin} />;
   }
 
-  // If they are logged in and verified as an admin, show the portal
   return <AdminPortal onExit={exitAdmin} />;
 }
 
