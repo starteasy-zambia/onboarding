@@ -161,7 +161,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 /* Kanban Board */
 .kanban-col { background: #F1F5F9; border-radius: 12px; padding: 12px; min-height: 200px; display: flex; flex-direction: column; gap: 10px; width: 290px; flex-shrink: 0; border: 2px dashed transparent; transition: all 0.2s; }
 .kanban-col.drag-over { background: #E2E8F0; border-color: #E8730F; }
-.kanban-card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: grab; border: 1px solid #E2E8F0; transition: transform 0.15s; }
+.kanban-card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: grab; border: 1px solid #E2E8F0; transition: transform 0.15s; position: relative; }
 .kanban-card:active { cursor: grabbing; }
 .kanban-card:hover { transform: translateY(-2px); border-color: #E8730F; }
 
@@ -170,6 +170,8 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(232,115,15,.4); }
 .btn-outline { background: #fff; border: 1px solid #E2E8F0; color: #0A1F12; }
 .btn-outline:hover { border-color: #E8730F; color: #E8730F; }
+.btn-danger { background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; }
+.btn-danger:hover { background: #DC2626; color: #fff; border-color: #DC2626; }
 
 .select-sm { padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 12.5px; font-weight: 600; font-family: inherit; color: #0A1F12; background: #fff; cursor: pointer; outline: none; }
 .select-sm:focus { border-color: #E8730F; }
@@ -383,7 +385,7 @@ function KpiCard({ label, val, icon, color, sub }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PUBLIC ONBOARDING FORM (Now with Phone)
+   PUBLIC ONBOARDING FORM
    ═══════════════════════════════════════════════════════════════════ */
 function OnboardingForm({ onAdminClick }) {
   const [intent, setIntent] = useState('');
@@ -679,9 +681,9 @@ function AdminLogin({ onExit }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   LEAD DRAWER (Added for complete CRM functionality)
+   LEAD DRAWER (Now with Delete functionality)
    ═══════════════════════════════════════════════════════════════════ */
-function LeadDrawer({ lead, onClose, onUpdate }) {
+function LeadDrawer({ lead, onClose, onUpdate, onDelete }) {
   const [noteText, setNoteText] = useState('');
   const [status, setStatus] = useState(lead.status);
   const [followUpDate, setFollowUpDate] = useState(lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : '');
@@ -703,6 +705,12 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
     const newNote = { text: noteText, createdAt: Date.now(), author: auth.currentUser?.email || 'Admin' };
     await onUpdate(lead.id, { notes: [...(lead.notes || []), newNote] });
     setNoteText('');
+  };
+
+  const handleDeleteClick = () => {
+    if (window.confirm(`Are you sure you want to delete the lead for "${lead.name}"? This cannot be undone.`)) {
+      onDelete(lead.id);
+    }
   };
 
   const waLink = lead.phone && lead.phone !== '-' ? `https://wa.me/${lead.phone.replace(/\D/g, '')}?text=Hi ${lead.name}, following up from StartEasy Zambia.` : null;
@@ -783,7 +791,7 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
             <button type="submit" className="btn btn-outline" style={{ width: '100%', borderColor: '#E8730F', color: '#E8730F' }}><i className="fas fa-plus"></i> Add Note</button>
           </form>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
             {(lead.notes || []).slice().reverse().map((note, i) => (
               <div key={i} style={{ background: '#fff', padding: 14, borderRadius: 8, border: '1px solid #E2E8F0', borderLeft: '3px solid #1B6CA8' }}>
                 <div style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }}>{note.text}</div>
@@ -795,6 +803,15 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
             ))}
             {(!lead.notes || lead.notes.length === 0) && <div style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, padding: 20 }}>No notes yet.</div>}
           </div>
+
+          {/* Danger Zone: Delete Lead */}
+          <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 24 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: '#B8564F', marginBottom: 12 }}>Danger Zone</h3>
+            <button onClick={handleDeleteClick} className="btn btn-danger" style={{ width: '100%', padding: 12 }}>
+              <i className="fas fa-trash-alt"></i> Delete Lead
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
@@ -802,11 +819,23 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CREATE LEAD MODAL (Added for manual entry)
+   CREATE LEAD MODAL
    ═══════════════════════════════════════════════════════════════════ */
 function CreateLeadModal({ onClose, onSave }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', business: '', service: 'Financial Support & Management', quotedAmount: '', priority: 'Warm' });
-  const submit = (e) => { e.preventDefault(); onSave({ ...form, source: 'Manual Entry', status: 'New lead', notes: [], followUpDate: null, createdAt: Date.now(), intent: 'Manual Entry' }); };
+  
+  const submit = (e) => { 
+    e.preventDefault(); 
+    onSave({ 
+      ...form, 
+      source: 'Manual Entry', 
+      status: 'New lead', 
+      notes: [], 
+      followUpDate: null, 
+      createdAt: Date.now(), 
+      intent: 'Manual Entry (Admin Added)' 
+    }); 
+  };
   
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -842,7 +871,7 @@ function CreateLeadModal({ onClose, onSave }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL (Dashboard + CRM added)
+   ADMIN PORTAL
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -858,7 +887,7 @@ function AdminPortal({ onExit }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [seeding, setSeeding] = useState(false);
-  const [crmView, setCrmView] = useState('list'); // 'list' or 'kanban'
+  const [crmView, setCrmView] = useState('list'); 
 
   const [, forceTick] = useState(0);
   useEffect(() => {
@@ -908,6 +937,17 @@ function AdminPortal({ onExit }) {
       setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
       if (selectedLead && selectedLead.id === id) setSelectedLead({ ...selectedLead, ...updates });
     } catch (err) { console.error(err); alert("Failed to update lead."); }
+  };
+
+  const deleteLead = async (id) => {
+    try {
+      await db.collection('se_leads').doc(id).delete();
+      setSelectedLead(null); // Close drawer if open
+      setLeads(prev => prev.filter(l => l.id !== id)); // Optimistic UI update
+    } catch (err) { 
+      console.error(err); 
+      alert("Failed to delete lead."); 
+    }
   };
 
   const createManualLead = async (data) => {
@@ -1385,11 +1425,12 @@ function AdminPortal({ onExit }) {
                           <th className="table-th">Score</th>
                           <th className="table-th">Status</th>
                           <th className="table-th">Added</th>
+                          <th className="table-th" style={{ textAlign: 'center' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredLeads.length === 0 ? (
-                          <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No matching leads.</td></tr>
+                          <tr><td colSpan="7" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No matching leads.</td></tr>
                         ) : filteredLeads.map(lead => {
                           const s = scoreFor(lead);
                           const st = CRM_STATUSES.find(x => x.id === lead.status) || CRM_STATUSES[0];
@@ -1415,6 +1456,15 @@ function AdminPortal({ onExit }) {
                               <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>
                                 {fmtDate(lead.createdAt)}
                                 <div style={{ fontSize: 10.5, marginTop: 2 }}>{timeAgo(lead.createdAt)}</div>
+                              </td>
+                              <td className="table-td" style={{ textAlign: 'center' }}>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); if(window.confirm(`Delete lead "${lead.name}"?`)) deleteLead(lead.id); }} 
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', padding: 8, borderRadius: 6 }}
+                                  title="Delete Lead"
+                                >
+                                  <i className="fas fa-trash-alt"></i>
+                                </button>
                               </td>
                             </tr>
                           );
@@ -1573,7 +1623,7 @@ function AdminPortal({ onExit }) {
       </main>
 
       {/* Modals & Drawers */}
-      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={updateLead} />}
+      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={updateLead} onDelete={deleteLead} />}
       {showCreateLead && <CreateLeadModal onClose={() => setShowCreateLead(false)} onSave={createManualLead} />}
     </div>
   );
