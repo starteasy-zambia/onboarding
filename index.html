@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>StartEasy CRM & Intelligence</title>
+<title>Onboarding & Lead Intelligence | StartEasy Zambia</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,10 +17,12 @@
 <script data-platform="onboarding" data-platform-label="Onboarding & Leads">
 (function(){'use strict';
 var CFG={firebase:{apiKey:"AIzaSyDdEyxvsd2RjgKVYTGYJfYUB_637lV3n5I",authDomain:"starteasy-zambia.firebaseapp.com",projectId:"starteasy-zambia",storageBucket:"starteasy-zambia.firebasestorage.app",messagingSenderId:"54136399237",appId:"1:54136399237:web:2f9f2d7f86bfdfb4be50ec"},cookieDomain:'.starteasyzambia.com',heartbeatMs:45000,scrollStep:25};
+
 function ck(n){var m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return m?m.pop():'';}
 function setCk(n,v){var e=new Date(Date.now()+31536000000000).toUTCString();document.cookie=n+'='+v+';expires='+e+';path=/;SameSite=Lax'+(CFG.cookieDomain?';domain='+CFG.cookieDomain:'');}
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);return v;}catch(e){return null;}}
 function parseUA(ua){if(!ua)return{browser:'—',os:'—',device:'Desktop'};var b='—',o='—',d='Desktop';if(/Edg\//.test(ua))b='Edge';else if(/Chrome\//.test(ua)&&!/Edg|OPR/.test(ua))b='Chrome';else if(/Safari\//.test(ua)&&!/Chrome|Chromium/.test(ua))b='Safari';else if(/Firefox\//.test(ua))b='Firefox';if(/Windows/.test(ua))o='Windows';else if(/Mac OS X/.test(ua))o='macOS';else if(/Android/.test(ua))o='Android';else if(/iPhone|iPad/.test(ua))o='iOS';else if(/Linux/.test(ua))o='Linux';if(/Mobi|Android|iPhone/.test(ua))d='Mobile';else if(/iPad|Tablet/.test(ua))d='Tablet';return{browser:b,os:o,device:d};}
+
 function getVid(){
   var urlVid=new URLSearchParams(location.search).get('vid');
   if(urlVid&&/^v_[a-z0-9]{6,}$/.test(urlVid)){setCk('se_vid',urlVid);ls('se_visitor_id',urlVid);ls('se_vid',urlVid);return urlVid;}
@@ -31,13 +33,17 @@ function getVid(){
   setCk('se_vid',nv);ls('se_visitor_id',nv);ls('se_vid',nv);return nv;
 }
 function getSid(){var s=sessionStorage.getItem('se_sid');if(s)return s;s='s_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);sessionStorage.setItem('se_sid',s);return s;}
+
 var st=document.currentScript||(function(){var s=document.getElementsByTagName('script');return s[s.length-1];})();
 var PLATFORM=(st&&st.getAttribute('data-platform'))||'main';
 var PLABEL=(st&&st.getAttribute('data-platform-label'))||PLATFORM;
+
 var db=null,ready=false;
 function initFB(){if(ready)return true;if(typeof firebase==='undefined')return false;if(!firebase.apps.length){try{firebase.initializeApp(CFG.firebase);}catch(e){return false;}}try{db=firebase.firestore();ready=true;return true;}catch(e){return false;}}
+
 var ua=parseUA(navigator.userAgent);
 var DEV={browser:ua.browser,os:ua.os,device:ua.device,screen:window.screen.width+'×'+window.screen.height,viewport:window.innerWidth+'×'+window.innerHeight,language:navigator.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,referrer:document.referrer||'direct'};
+
 var q=[],timer=null,flushing=false;
 function push(action,details){q.push({visitorId:getVid(),sessionId:getSid(),platform:PLATFORM,platformLabel:PLABEL,action:action,details:details||{},device:DEV,url:location.href,path:location.pathname,title:document.title,createdAt:Date.now()});if(!timer)timer=setTimeout(flush,800);}
 function flush(){timer=null;if(flushing||!q.length)return;if(!initFB())return;flushing=true;var b=q.splice(0,20);Promise.all(b.map(function(e){return db.collection('se_events').add(e).catch(function(){});})).then(function(){flushing=false;if(q.length)setTimeout(flush,800);rollup(b);});}
@@ -45,6 +51,7 @@ function rollup(batch){if(!db||!batch.length)return;var vid=batch[0].visitorId,n
   ref.set({visitorId:vid,lastSeen:now,lastPlatform:PLATFORM,lastPlatformLabel:PLABEL,lastPath:last.path,lastAction:last.action,device:DEV,platformList:firebase.firestore.FieldValue.arrayUnion(PLATFORM)},{merge:true}).catch(function(){});
   var inc={totalEvents:firebase.firestore.FieldValue.increment(batch.length)};inc['sessions.'+getSid()+'.events']=firebase.firestore.FieldValue.increment(batch.length);ref.update(inc).catch(function(){});
   ref.get().then(function(s){if(!s.exists)ref.update({firstSeen:now,firstPlatform:PLATFORM,firstPlatformLabel:PLABEL,sessions:firebase.firestore.FieldValue.increment(1)}).catch(function(){});}).catch(function(){});}
+
 function boot(){
   push('page_view',{title:document.title});
   setInterval(function(){push('heartbeat',{});},CFG.heartbeatMs);
@@ -56,10 +63,12 @@ function boot(){
     if(h&&!h.startsWith('#')&&!h.startsWith('/')&&!h.startsWith(location.origin))push('external_click',{label:lb,href:h});else if(t.tagName==='BUTTON')push('button_click',{label:lb});},true);
   document.addEventListener('submit',function(e){var f=e.target;push('form_submit',{form:f.id||f.getAttribute('name')||'form'});},true);
 }
+
 window.SE=window.SE||{};
 window.SE.track=function(a,d){push(a,d||{});};
 window.SE.identify=function(p){var vid=getVid();if(!initFB())return;db.collection('se_visitors').doc(vid).set({email:p.email||null,name:p.name||null,identified:true,identifiedAt:Date.now(),profile:p},{merge:true}).catch(function(){});push('identify',{email:p.email,name:p.name,role:p.role});};
 window.SE.platform=PLATFORM;window.SE.visitorId=getVid();
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
 </script>
@@ -81,10 +90,12 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .live-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; background: rgba(34,197,94,.4); animation: pulse-ring 1.8s ease-out infinite; }
 @keyframes pulse-ring { 0% { transform: scale(.7); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
 
-@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes slideOutRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
-.drawer-enter { animation: slideInRight .3s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+.toast { animation: slideIn .35s cubic-bezier(.2,.8,.2,1); }
+.toast-exit { animation: slideOut .3s ease forwards; }
 
+/* Public onboarding */
 .site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
 .header-content { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 24px; }
 .logo-group { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; }
@@ -115,8 +126,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 
 /* Admin */
 .admin-layout { display: flex; min-height: 100vh; background: #F8FAFC; }
-.admin-sidebar { width: 260px; background: #0A1F12; color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; overflow-y: auto; }
-.admin-content { flex: 1; margin-left: 260px; padding: 32px; min-width: 0; }
+.admin-sidebar { width: 260px; background: #0A1F12; color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; transition: transform 0.3s ease; overflow-y: auto; }
+.admin-content { flex: 1; margin-left: 260px; padding: 32px; min-width: 0; transition: margin 0.3s ease; }
+
 .sidebar-header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; }
 .sidebar-logo { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg,#E8730F,#F5A623); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; font-family: 'Playfair Display', serif; }
 .nav-section { padding: 24px 24px 8px; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
@@ -124,30 +136,27 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
 .nav-item.active { background: rgba(245,166,35,0.1); color: #F5A623; border-left-color: #F5A623; }
 
+.mobile-toggle { display: none; position: fixed; top: 16px; left: 16px; z-index: 60; background: #0A1F12; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+
 .card { background: #fff; border-radius: 12px; border: 1px solid #E2E8F0; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
 .kpi-value { font-size: 32px; font-weight: 800; color: #0A1F12; line-height: 1.1; margin-top: 8px; font-variant-numeric: tabular-nums; }
 .table-th { text-align: left; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; font-weight: 800; color: #64748B; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; }
 .table-td { padding: 16px; border-bottom: 1px solid #F1F5F9; color: #1E293B; font-weight: 500; vertical-align: middle; font-size: 13.5px; }
-
-/* Status Badges */
 .status-badge { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; display: inline-block; }
 .status-new { background: #E0F2FE; color: #0284C7; }
 .status-contacted { background: #FEF3C7; color: #D97706; }
-.status-discussion { background: #F3E8FF; color: #7E22CE; }
-.status-quotation { background: #FFEDD5; color: #C2410C; }
-.status-converted { background: #DCFCE7; color: #15803D; }
-.status-not-interested { background: #FEE2E2; color: #DC2626; }
-.status-followup { background: #F1F5F9; color: #475569; }
-
-/* CRM Kanban Board */
-.kanban-col { background: #F1F5F9; border-radius: 12px; padding: 12px; min-height: 200px; display: flex; flex-direction: column; gap: 10px; width: 280px; flex-shrink: 0; }
-.kanban-card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; border: 1px solid #E2E8F0; transition: transform 0.15s; }
-.kanban-card:hover { transform: translateY(-2px); border-color: #E8730F; }
+.status-qualified { background: #F3E8FF; color: #7E22CE; }
+.status-converted { background: #1E7B3C; color: #fff; }
+.status-lost { background: #FEE2E2; color: #DC2626; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: all .2s; }
 .btn-primary { background: linear-gradient(135deg,#E8730F,#F5A623); color: #fff; box-shadow: 0 4px 12px rgba(232,115,15,.3); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(232,115,15,.4); }
 .btn-outline { background: #fff; border: 1px solid #E2E8F0; color: #0A1F12; }
+.btn-outline:hover { border-color: #E8730F; color: #E8730F; }
+
 .select-sm { padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 12.5px; font-weight: 600; font-family: inherit; color: #0A1F12; background: #fff; cursor: pointer; outline: none; }
+.select-sm:focus { border-color: #E8730F; }
 
 .score-pill { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; margin-left: 8px; display: inline-block; }
 .score-hot { background: #FEE2E2; color: #DC2626; }
@@ -156,7 +165,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 
 @media (max-width: 1024px) {
   .admin-sidebar { transform: translateX(-100%); }
-  .admin-content { margin-left: 0; padding: 20px 16px; }
+  .admin-sidebar.open { transform: translateX(0); }
+  .admin-content { margin-left: 0; padding: 72px 16px 32px; }
+  .mobile-toggle { display: flex; }
 }
 </style>
 </head>
@@ -169,6 +180,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useRef } = React;
 
+/* ─── FIREBASE INIT ─── */
 const firebaseConfig = {
   apiKey: "AIzaSyDdEyxvsd2RjgKVYTGYJfYUB_637lV3n5I",
   authDomain: "starteasy-zambia.firebaseapp.com",
@@ -180,22 +192,81 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+
 const WHATSAPP_NUMBER = '260762499581';
 
-/* ─── CRM STATUSES ─── */
-const CRM_STATUSES = [
-  { id: 'New lead', label: 'New lead', color: 'status-new', icon: 'fa-sparkles' },
-  { id: 'Contacted', label: 'Contacted', color: 'status-contacted', icon: 'fa-phone' },
-  { id: 'Discussion underway', label: 'Discussion underway', color: 'status-discussion', icon: 'fa-comments' },
-  { id: 'Quotation sent', label: 'Quotation sent', color: 'status-quotation', icon: 'fa-file-invoice-dollar' },
-  { id: 'Converted to customer', label: 'Converted', color: 'status-converted', icon: 'fa-check-circle' },
-  { id: 'Follow-up later', label: 'Follow-up later', color: 'status-followup', icon: 'fa-clock' },
-  { id: 'Not interested', label: 'Not interested', color: 'status-not-interested', icon: 'fa-times-circle' }
-];
+/* ─── VISITOR TRACKING ─── */
+function getVisitorId() {
+  try {
+    let vid = localStorage.getItem('se_visitor_id');
+    if (!vid) {
+      vid = 'v_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem('se_visitor_id', vid);
+    }
+    return vid;
+  } catch(e) { return 'v_unknown'; }
+}
+function getSessionId() {
+  try {
+    let sid = sessionStorage.getItem('se_sid');
+    if (!sid) {
+      sid = 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      sessionStorage.setItem('se_sid', sid);
+    }
+    return sid;
+  } catch(e) { return 's_unknown'; }
+}
+function parseUA(ua) {
+  if (!ua) return { browser: '—', os: '—', device: 'Desktop' };
+  let browser = '—', os = '—', device = 'Desktop';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Chrome\//.test(ua) && !/Edg|OPR/.test(ua)) browser = 'Chrome';
+  else if (/Safari\//.test(ua) && !/Chrome|Chromium/.test(ua)) browser = 'Safari';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  if (/Windows/.test(ua)) os = 'Windows';
+  else if (/Mac OS X/.test(ua)) os = 'macOS';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/iPhone|iPad/.test(ua)) os = 'iOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  if (/Mobi|Android|iPhone/.test(ua)) device = 'Mobile';
+  else if (/iPad|Tablet/.test(ua)) device = 'Tablet';
+  return { browser, os, device };
+}
+const DEVICE_INFO = (() => {
+  const ua = navigator.userAgent;
+  const parsed = parseUA(ua);
+  return {
+    ...parsed,
+    screen: `${window.screen.width}×${window.screen.height}`,
+    language: navigator.language,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    referrer: document.referrer || 'direct'
+  };
+})();
 
-/* ─── HELPERS ─── */
-function getVisitorId() { try { return localStorage.getItem('se_visitor_id') || 'v_unknown'; } catch(e) { return 'v_unknown'; } }
-function getSessionId() { try { return sessionStorage.getItem('se_sid') || 's_unknown'; } catch(e) { return 's_unknown'; } }
+async function trackEvent(action, details = {}) {
+  if (window.SE && typeof window.SE.track === 'function') {
+    window.SE.track(action, details);
+    return;
+  }
+  try {
+    await db.collection('se_events').add({
+      visitorId: getVisitorId(),
+      sessionId: getSessionId(),
+      platform: 'onboarding',
+      platformLabel: 'Onboarding & Leads',
+      action,
+      details,
+      device: DEVICE_INFO,
+      url: location.href,
+      path: location.pathname,
+      title: document.title,
+      createdAt: Date.now()
+    });
+  } catch(e) { console.warn("Tracking failed", e); }
+}
+
+/* ─── SMALL HELPERS ─── */
 function timeAgo(ts) {
   if (!ts) return 'just now';
   const ms = ts.toMillis ? ts.toMillis() : ts;
@@ -211,35 +282,6 @@ function fmtDate(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function parseUA(ua) {
-  if (!ua) return { browser: '—', os: '—', device: 'Desktop' };
-  let browser = '—', os = '—', device = 'Desktop';
-  if (/Edg\//.test(ua)) browser = 'Edge'; else if (/Chrome\//.test(ua) && !/Edg|OPR/.test(ua)) browser = 'Chrome'; else if (/Safari\//.test(ua) && !/Chrome|Chromium/.test(ua)) browser = 'Safari'; else if (/Firefox\//.test(ua)) browser = 'Firefox';
-  if (/Windows/.test(ua)) os = 'Windows'; else if (/Mac OS X/.test(ua)) os = 'macOS'; else if (/Android/.test(ua)) os = 'Android'; else if (/iPhone|iPad/.test(ua)) os = 'iOS'; else if (/Linux/.test(ua)) os = 'Linux';
-  if (/Mobi|Android|iPhone/.test(ua)) device = 'Mobile'; else if (/iPad|Tablet/.test(ua)) device = 'Tablet';
-  return { browser, os, device };
-}
-const DEVICE_INFO = (() => {
-  const parsed = parseUA(navigator.userAgent);
-  return { ...parsed, screen: `${window.screen.width}×${window.screen.height}`, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, referrer: document.referrer || 'direct' };
-})();
-
-function exportLeadsCSV(leads) {
-  const headers = ['Name','Email','Phone','Business','Intent','Service','Status','Quoted Amount','Follow-up Date','Created'];
-  const rows = leads.map(l => [
-    l.name||'', l.email||'', l.phone||'', l.business||'', l.intent||'', l.service||'',
-    l.status||'', l.quotedAmount||0, l.followUpDate ? new Date(l.followUpDate).toISOString() : '', 
-    l.createdAt ? (l.createdAt.toDate ? new Date(l.createdAt.toDate()).toISOString() : new Date(l.createdAt).toISOString()) : ''
-  ]);
-  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `starteasy-leads-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 function useCountUp(target) {
   const [val, setVal] = useState(0);
   const prev = useRef(0);
@@ -258,6 +300,37 @@ function useCountUp(target) {
     return () => cancelAnimationFrame(raf);
   }, [target]);
   return val;
+}
+function playBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    o.start(); o.stop(ctx.currentTime + 0.36);
+    setTimeout(() => ctx.close(), 500);
+  } catch(e) {}
+}
+function exportLeadsCSV(leads) {
+  const headers = ['Name','Email','Business','Intent','Service','Status','Details','Created'];
+  const rows = leads.map(l => [
+    l.name||'', l.email||'', l.business||'', l.intent||'', l.service||'',
+    l.status||'', l.details||'', l.createdAt ? (l.createdAt.toDate ? new Date(l.createdAt.toDate()).toISOString() : new Date(l.createdAt).toISOString()) : ''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `starteasy-leads-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function KpiCard({ label, val, icon, color, sub }) {
@@ -284,7 +357,6 @@ function OnboardingForm({ onAdminClick }) {
   const [q2Answer, setQ2Answer] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
@@ -297,7 +369,7 @@ function OnboardingForm({ onAdminClick }) {
     const start = Date.now();
     const leave = () => {
       const secs = Math.round((Date.now() - start) / 1000);
-      if (secs > 3 && window.SE) window.SE.track('session_end', { duration_secs: secs });
+      if (secs > 3) trackEvent('session_end', { duration_secs: secs });
     };
     window.addEventListener('beforeunload', leave);
     const unsub = db.collection('se_leads').orderBy('createdAt','desc').limit(20)
@@ -333,71 +405,94 @@ function OnboardingForm({ onAdminClick }) {
 
   const handleIntentSelect = (opt) => {
     setIntent(opt); setQ2Answer(''); setError('');
-    if (window.SE) window.SE.track('intent_selected', { intent: opt });
+    trackEvent('intent_selected', { intent: opt });
+  };
+  const onFieldFocus = (field) => {
+    if (focusedRef.current.has(field)) return;
+    focusedRef.current.add(field);
+    trackEvent('field_focus', { field });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setSuccess(false);
+    
     if (!intent) return setError("Please select what brings you to StartEasy.");
     if (!q2Answer) return setError("Please answer the second question.");
     if (!fullName.trim()) return setError("Please enter your full name.");
     if (!email.trim() || !email.includes('@')) return setError("Please enter a valid email address.");
 
     setSubmitting(true);
+    
     try {
       await db.collection('se_leads').add({
-        name: fullName, email, phone: phone || '-', intent, service: q2Answer,
-        business: businessName || '-', details: details || '', 
-        status: 'New lead', notes: [], followUpDate: null, quotedAmount: 0,
+        name: fullName, email: email, intent: intent, service: q2Answer,
+        business: businessName || '-', details: details || '', status: 'New lead',
         visitorId: getVisitorId(), sessionId: getSessionId(), device: DEVICE_INFO,
         createdAt: Date.now()
       });
 
+      await trackEvent('form_submitted', { name: fullName, service: q2Answer });
+
       if (window.SE && typeof window.SE.identify === 'function') {
-        window.SE.track('form_submitted', { name: fullName, service: q2Answer });
-        window.SE.identify({ email, name: fullName, role: 'lead', phone });
+        window.SE.identify({
+          email: email, name: fullName, role: 'lead',
+          intent: intent, service: q2Answer, business: businessName || null
+        });
       }
 
       setSuccess(true);
-      const message = `*STARTEASY ONBOARDING*%0A%0A*Name:* ${fullName}%0A*Email:* ${email}%0A*Phone:* ${phone || 'N/A'}%0A%0A*1. Intent:*%0A${intent}%0A%0A*2. Service:*%0A${q2Answer}%0A%0A*3. Business:*%0A${businessName || 'N/A'}%0A%0A*4. More:*%0A${details || 'N/A'}`;
+      
+      const message = `*STARTEASY ONBOARDING*%0A%0A` +
+        `*Name:* ${fullName}%0A` +
+        `*Email:* ${email}%0A%0A` +
+        `*1. Intent:*%0A${intent}%0A%0A` +
+        `*2. Details:*%0A${q2Answer}%0A%0A` +
+        `*3. Business:*%0A${businessName || 'N/A'}%0A%0A` +
+        `*4. More:*%0A${details || 'N/A'}`;
 
       setTimeout(() => {
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
-        setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setPhone(''); setBusinessName(''); setDetails('');
+        setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setBusinessName(''); setDetails('');
         setSuccess(false); setSubmitting(false);
       }, 1500);
+
     } catch (err) {
-      setError(`Failed to submit: ${err.message}`);
+      console.error("Submission Error:", err);
+      setError(`Failed to submit. Error: ${err.message || err.code || 'Unknown issue'}`);
       setSubmitting(false);
     }
   };
 
   const renderQ2 = () => {
     if (!intent) return null;
-    let label = "", placeholder = "", isSelect = false;
+    let label = ""; let placeholder = ""; let isSelect = false;
+
     switch (intent) {
       case "I need business or administrative services":
       case "I am an entrepreneur or business owner":
         label = "Which service interests you most?"; isSelect = true; break;
       case "I want to become a supplier or service partner":
-        label = "What products or services do you supply?"; placeholder = "e.g. Fabric, electronics..."; break;
+        label = "What products or services do you supply?"; placeholder = "e.g. Fabric, electronics, logistics..."; break;
       case "I am interested in joining the StartEasy team":
-        label = "What role or expertise are you bringing?"; placeholder = "e.g. Finance, Marketing..."; break;
+        label = "What role or expertise are you bringing?"; placeholder = "e.g. Finance, Marketing, Admin..."; break;
       case "I am interested in investment or strategic partnerships":
-        label = "What type of partnership are you looking for?"; placeholder = "e.g. Equity investment..."; break;
-      default: label = "Please provide more details"; placeholder = "Tell us more...";
+        label = "What type of partnership or investment are you looking for?"; placeholder = "e.g. Equity investment, joint venture..."; break;
+      case "I am exploring the platform":
+        label = "What are you looking to explore?"; placeholder = "e.g. Just browsing, seeing what you offer..."; break;
+      default: label = "Please provide more details";
     }
+
     return (
-      <div className="fadein" style={{ marginBottom: 24 }}>
+      <div className="fadein" style={{ marginBottom: 32 }}>
         <label className="form-label">2. {label} <span style={{ color: 'var(--red)' }}>*</span></label>
         {isSelect ? (
-          <select className="form-select" value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)}>
+          <select className="form-select" value={q2Answer} onChange={(e) => { setQ2Answer(e.target.value); trackEvent('q2_selected', { value: e.target.value }); }}>
             <option value="" disabled>Select a service...</option>
             {serviceOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
           </select>
         ) : (
-          <input type="text" className="form-input" placeholder={placeholder} value={q2Answer} onChange={(e) => setQ2Answer(e.target.value)} />
+          <input type="text" className="form-input" placeholder={placeholder} value={q2Answer} onFocus={() => onFieldFocus('q2_text')} onChange={(e) => setQ2Answer(e.target.value)} />
         )}
       </div>
     );
@@ -409,18 +504,30 @@ function OnboardingForm({ onAdminClick }) {
         <div className="header-content">
           <a href="#" className="logo-group">
             <div className="logo-mark">S</div>
-            <div><div className="logo-text-sub">Onboarding</div><div className="logo-text-main">StartEasy Zambia</div></div>
+            <div>
+              <div className="logo-text-sub">Onboarding</div>
+              <div className="logo-text-main">StartEasy Zambia</div>
+            </div>
           </a>
-          <button onClick={onAdminClick} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            <i className="fas fa-lock"></i> Admin Portal
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255,255,255,.7)', fontWeight: 700 }}>
+              <span className="live-dot"></span> LIVE
+            </span>
+            <button onClick={onAdminClick} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-lock"></i> Admin Portal
+            </button>
+          </div>
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: '40px 24px' }}>
-        <div className="fadein" style={{ textAlign: 'center', marginBottom: 32 }}>
-          <h1 className="serif" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', color: 'var(--forest)', marginBottom: 16, lineHeight: 1.1 }}>Welcome to <span style={{ color: 'var(--orange)' }}>StartEasy Zambia</span></h1>
-          <p style={{ fontSize: 16, color: 'rgba(10,31,18,.65)', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>Tell us a little about what brings you here so we can connect you with the right support.</p>
+      <main style={{ flex: 1, padding: '60px 24px' }}>
+        <div className="fadein" style={{ textAlign: 'center', marginBottom: 40 }}>
+          <h1 className="serif" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', color: 'var(--forest)', marginBottom: 16, lineHeight: 1.1 }}>
+            Welcome to <span style={{ color: 'var(--orange)' }}>StartEasy Zambia</span>
+          </h1>
+          <p style={{ fontSize: 16, color: 'rgba(10,31,18,.65)', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>
+            Tell us a little about what brings you here so we can connect you with the right support.
+          </p>
           {recentCount !== null && recentCount > 0 && (
             <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(30,123,60,.08)', color: '#0F5C2A', padding: '8px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
               <span className="live-dot" style={{ background: '#1E7B3C' }}></span>
@@ -432,28 +539,45 @@ function OnboardingForm({ onAdminClick }) {
         <div className="form-card fadein">
           {error && <div className="error-msg"><i className="fas fa-exclamation-circle"></i> {error}</div>}
           {success && <div className="success-msg"><i className="fas fa-check-circle"></i> Data saved! Opening WhatsApp...</div>}
+
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 32 }}>
               <label className="form-label">1. What brings you to StartEasy? <span style={{ color: 'var(--red)' }}>*</span></label>
               <div style={{ marginTop: 12 }}>
                 {intentOptions.map((opt, i) => (
                   <div key={i} className={`radio-tile ${intent === opt ? 'selected' : ''}`} onClick={() => handleIntentSelect(opt)}>
-                    <div className="radio-dot"></div><div className="radio-text">{opt}</div>
+                    <div className="radio-dot"></div>
+                    <div className="radio-text">{opt}</div>
                   </div>
                 ))}
               </div>
             </div>
+
             {renderQ2()}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-              <div><label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label><input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
-              <div><label className="form-label">4. Phone Number</label><input type="tel" className="form-input" placeholder="+260 ..." value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">3. Full Name <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input type="text" className="form-input" placeholder="e.g. Chanda Mwale" value={fullName} onFocus={() => onFieldFocus('name')} onChange={(e) => setFullName(e.target.value)} required />
             </div>
-            <div style={{ marginBottom: 24 }}><label className="form-label">5. Email Address <span style={{ color: 'var(--red)' }}>*</span></label><input type="email" className="form-input" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-            <div style={{ marginBottom: 24 }}><label className="form-label">6. Business name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label><input type="text" className="form-input" placeholder="e.g. Acme Traders Ltd" value={businessName} onChange={(e) => setBusinessName(e.target.value)} /></div>
-            <div style={{ marginBottom: 32 }}><label className="form-label">7. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label><textarea className="form-input" rows={4} placeholder="Anything specific you want us to know?" value={details} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}></textarea></div>
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">4. Email Address <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input type="email" className="form-input" placeholder="you@company.com" value={email} onFocus={() => onFieldFocus('email')} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">5. Business or organisation name <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
+              <input type="text" className="form-input" placeholder="e.g. Acme Traders Ltd" value={businessName} onFocus={() => onFieldFocus('business')} onChange={(e) => setBusinessName(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 32 }}>
+              <label className="form-label">6. Tell us more <span style={{ color: 'rgba(10,31,18,.4)', fontWeight: 500 }}>(optional)</span></label>
+              <textarea className="form-input" rows={4} placeholder="Anything specific you want us to know?" value={details} onFocus={() => onFieldFocus('details')} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}></textarea>
+            </div>
+
             <button type="submit" className="btn-wa" disabled={submitting}>
               {submitting ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fab fa-whatsapp"></i> Save & Connect via WhatsApp</>}
             </button>
+            <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(10,31,18,.5)', marginTop: 16 }}>
+              Your details are securely saved and will pre-fill your WhatsApp message.
+            </p>
           </form>
         </div>
       </main>
@@ -462,7 +586,7 @@ function OnboardingForm({ onAdminClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   SECURE ADMIN LOGIN
+   SECURE ADMIN LOGIN (Firebase Auth)
    ═══════════════════════════════════════════════════════════════════ */
 function AdminLogin({ onExit }) {
   const [email, setEmail] = useState('');
@@ -471,22 +595,57 @@ function AdminLogin({ onExit }) {
   const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault(); setErr(''); setSubmitting(true);
-    try { await auth.signInWithEmailAndPassword(email, password); } 
-    catch (error) { setErr(error.message); setSubmitting(false); }
+    e.preventDefault();
+    setErr('');
+    setSubmitting(true);
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      // The App component will detect the auth state change and render AdminPortal
+    } catch (error) {
+      console.error(error);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        setErr('Invalid email or password.');
+      } else {
+        setErr(error.message);
+      }
+      setSubmitting(false);
+    }
   };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', padding: 24 }}>
       <div className="card fadein" style={{ maxWidth: 400, width: '100%', padding: 36, textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#E8730F,#F5A623)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 20px' }}><i className="fas fa-shield-halved"></i></div>
-        <h2 className="serif" style={{ fontSize: 22, fontWeight: 800, color: '#0A1F12', marginBottom: 8 }}>StartEasy CRM Login</h2>
-        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>Sign in with your admin credentials.</p>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#E8730F,#F5A623)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 20px' }}>
+          <i className="fas fa-shield-halved"></i>
+        </div>
+        <h2 className="serif" style={{ fontSize: 22, fontWeight: 800, color: '#0A1F12', marginBottom: 8 }}>Admin Access</h2>
+        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>Sign in with your StartEasy admin credentials.</p>
+        
         <form onSubmit={handleLogin}>
-          {err && <div className="error-msg"><i className="fas fa-exclamation-circle"></i> {err}</div>}
-          <input type="email" className="form-input" placeholder="admin@starteasyzambia.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ marginBottom: 12 }} />
-          <input type="password" className="form-input" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ marginBottom: 20 }} />
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }} disabled={submitting}>{submitting ? 'Verifying...' : 'Secure Login'}</button>
+          {err && <div className="error-msg" style={{ marginBottom: 16 }}><i className="fas fa-exclamation-circle"></i> {err}</div>}
+          
+          <input 
+            type="email" 
+            className="form-input" 
+            placeholder="admin@starteasyzambia.com" 
+            value={email} 
+            onChange={e => { setEmail(e.target.value); setErr(''); }} 
+            required 
+            style={{ marginBottom: 12 }} 
+          />
+          <input 
+            type="password" 
+            className="form-input" 
+            placeholder="Password" 
+            value={password} 
+            onChange={e => { setPassword(e.target.value); setErr(''); }} 
+            required 
+            style={{ marginBottom: 20 }} 
+          />
+          
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 14 }} disabled={submitting}>
+            {submitting ? <><i className="fas fa-spinner fa-spin"></i> Verifying...</> : 'Secure Login'}
+          </button>
           <button type="button" onClick={onExit} className="btn" style={{ width: '100%', marginTop: 8, padding: 12, background: 'transparent', color: '#64748B' }}>← Back to Form</button>
         </form>
       </div>
@@ -495,112 +654,7 @@ function AdminLogin({ onExit }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CRM - LEAD DETAIL DRAWER
-   ═══════════════════════════════════════════════════════════════════ */
-function LeadDrawer({ lead, onClose, onUpdate }) {
-  const [noteText, setNoteText] = useState('');
-  const [status, setStatus] = useState(lead.status);
-  const [followUpDate, setFollowUpDate] = useState(lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : '');
-  const [quotedAmount, setQuotedAmount] = useState(lead.quotedAmount || '');
-
-  const handleSave = async () => {
-    const updates = { 
-      status, 
-      followUpDate: followUpDate ? new Date(followUpDate).getTime() : null,
-      quotedAmount: Number(quotedAmount) || 0
-    };
-    await onUpdate(lead.id, updates);
-  };
-
-  const handleAddNote = async (e) => {
-    e.preventDefault();
-    if (!noteText.trim()) return;
-    const newNote = { text: noteText, createdAt: Date.now(), author: auth.currentUser?.email || 'Admin' };
-    const updatedNotes = [...(lead.notes || []), newNote];
-    await onUpdate(lead.id, { notes: updatedNotes });
-    setNoteText('');
-  };
-
-  const waLink = lead.phone && lead.phone !== '-' ? `https://wa.me/${lead.phone.replace(/\D/g, '')}?text=Hi ${lead.name}, this is StartEasy Zambia following up on your inquiry.` : null;
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', justifyContent: 'flex-end' }}>
-      <div className="drawer-enter" style={{ width: '100%', maxWidth: 500, background: '#F8FAFC', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' }}>
-        <div style={{ background: '#0A1F12', padding: '24px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginBottom: 4 }}>Lead Profile</div>
-            <h2 className="serif" style={{ fontSize: 24, margin: 0, color: '#F5A623' }}>{lead.name}</h2>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>{lead.business} {lead.phone !== '-' && `· ${lead.phone}`}</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 20, cursor: 'pointer' }}><i className="fas fa-times"></i></button>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, padding: '16px 24px', background: '#fff', borderBottom: '1px solid #E2E8F0' }}>
-          {waLink ? (
-            <a href={waLink} target="_blank" rel="noreferrer" className="btn" style={{ flex: 1, background: '#25D366', color: '#fff', textDecoration: 'none' }}><i className="fab fa-whatsapp"></i> WhatsApp</a>
-          ) : (
-            <button className="btn" disabled style={{ flex: 1, background: '#E2E8F0', color: '#94A3B8' }}><i className="fab fa-whatsapp"></i> No Phone</button>
-          )}
-          <a href={`mailto:${lead.email}`} className="btn btn-outline" style={{ flex: 1, textDecoration: 'none' }}><i className="fas fa-envelope"></i> Email</a>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-          <div className="card" style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 16 }}>Pipeline Status</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>STATUS</label>
-                <select className="select-sm" style={{ width: '100%', padding: 10 }} value={status} onChange={(e) => setStatus(e.target.value)}>
-                  {CRM_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>QUOTED AMOUNT (K)</label>
-                <input type="number" className="form-input" style={{ padding: 10, fontSize: 13 }} value={quotedAmount} onChange={e => setQuotedAmount(e.target.value)} placeholder="0.00" />
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>FOLLOW-UP DATE</label>
-              <input type="date" className="form-input" style={{ padding: 10, fontSize: 13 }} value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} />
-            </div>
-            <button onClick={handleSave} className="btn btn-primary" style={{ width: '100%' }}><i className="fas fa-save"></i> Save Changes</button>
-          </div>
-
-          <div className="card" style={{ marginBottom: 24, background: '#F1F5F9' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Original Inquiry</h3>
-            <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}><strong>Intent:</strong> {lead.intent}</div>
-            <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}><strong>Service:</strong> {lead.service}</div>
-            {lead.details && <div style={{ fontSize: 13, color: '#334155', padding: 12, background: '#fff', borderRadius: 6, fontStyle: 'italic', borderLeft: '3px solid #E8730F' }}>"{lead.details}"</div>}
-            <div style={{ fontSize: 11, color: '#64748B', marginTop: 12 }}>Captured: {new Date(lead.createdAt?.toMillis ? lead.createdAt.toMillis() : lead.createdAt).toLocaleString()} via {lead.device?.browser || 'Web'}</div>
-          </div>
-
-          <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Activity & Notes</h3>
-          
-          <form onSubmit={handleAddNote} style={{ marginBottom: 20 }}>
-            <textarea className="form-input" rows={3} placeholder="Log a call, meeting, or note..." value={noteText} onChange={e => setNoteText(e.target.value)} style={{ marginBottom: 8, fontSize: 13 }} />
-            <button type="submit" className="btn btn-outline" style={{ width: '100%', borderColor: '#E8730F', color: '#E8730F' }}><i className="fas fa-plus"></i> Add Note</button>
-          </form>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {(lead.notes || []).slice().reverse().map((note, i) => (
-              <div key={i} style={{ background: '#fff', padding: 14, borderRadius: 8, border: '1px solid #E2E8F0', borderLeft: '3px solid #1B6CA8' }}>
-                <div style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }}>{note.text}</div>
-                <div style={{ fontSize: 10.5, color: '#94A3B8', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{note.author}</span>
-                  <span>{new Date(note.createdAt).toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-            {(!lead.notes || lead.notes.length === 0) && <div style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, padding: 20 }}>No notes yet.</div>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL (CRM + DASHBOARD + TRACKER)
+   ADMIN PORTAL
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -608,30 +662,35 @@ function AdminPortal({ onExit }) {
   const [leads, setLeads] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLead, setSelectedLead] = useState(null);
   const [selectedVisitor, setSelectedVisitor] = useState(null);
   const [soundOn, setSoundOn] = useState(true);
   const [toasts, setToasts] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [seeding, setSeeding] = useState(false);
-  const [crmView, setCrmView] = useState('kanban');
+
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const dataLoadedRef = useRef(false);
   const toastedRef = useRef(new Set());
-
-  const [, forceTick] = useState(0);
-  useEffect(() => { const t = setInterval(() => forceTick(n => n + 1), 1000); return () => clearInterval(t); }, []);
-
   useEffect(() => {
-    const unsubLeads = db.collection('se_leads').orderBy('createdAt', 'desc').onSnapshot(snap => {
-      setLeads(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      if (!dataLoadedRef.current) dataLoadedRef.current = true;
-    });
-    const unsubEvents = db.collection('se_events').orderBy('createdAt', 'desc').limit(500).onSnapshot(snap => {
-      setEvents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
+    const unsubLeads = db.collection('se_leads')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snap => {
+        setLeads(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (!dataLoadedRef.current) dataLoadedRef.current = true;
+      }, err => console.error("leads:", err));
+    const unsubEvents = db.collection('se_events')
+      .orderBy('createdAt', 'desc')
+      .limit(500)
+      .onSnapshot(snap => {
+        setEvents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setLoading(false);
+      }, err => { console.error("events:", err); setLoading(false); });
     return () => { unsubLeads(); unsubEvents(); };
   }, []);
 
@@ -639,21 +698,12 @@ function AdminPortal({ onExit }) {
     if (!dataLoadedRef.current || leads.length === 0) return;
     const newest = leads[0];
     const ts = newest.createdAt?.toMillis?.() || newest.createdAt || 0;
-    if (ts > Date.now() - 10000 && !toastedRef.current.has(newest.id)) {
+    const isFresh = ts > Date.now() - 10000;
+    if (isFresh && !toastedRef.current.has(newest.id)) {
       toastedRef.current.add(newest.id);
       const toastId = `t_${Date.now()}`;
-      setToasts(prev => [...prev, { id: toastId, title: `New lead: ${newest.name}`, sub: newest.service || newest.intent }]);
-      if (soundOn) {
-        try {
-          const ctx = new (window.AudioContext||window.webkitAudioContext)();
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.connect(g); g.connect(ctx.destination); o.type = 'sine'; o.frequency.value = 880;
-          g.gain.setValueAtTime(0.0001, ctx.currentTime);
-          g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-          o.start(); o.stop(ctx.currentTime + 0.36); setTimeout(()=>ctx.close(),500);
-        } catch(e){}
-      }
+      setToasts(prev => [...prev, { id: toastId, title: `New lead: ${newest.name}`, sub: newest.service || newest.intent, kind: 'lead' }]);
+      if (soundOn) playBeep();
       setTimeout(() => {
         setToasts(prev => prev.map(t => t.id === toastId ? { ...t, exiting: true } : t));
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toastId)), 320);
@@ -661,28 +711,45 @@ function AdminPortal({ onExit }) {
     }
   }, [leads, soundOn]);
 
-  const updateLead = async (id, updates) => {
+  const updateLeadStatus = async (id, newStatus) => {
     try {
-      await db.collection('se_leads').doc(id).update(updates);
-      setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
-      if (selectedLead && selectedLead.id === id) setSelectedLead({ ...selectedLead, ...updates });
-    } catch (err) { alert("Error saving: " + err.message); }
+      await db.collection('se_leads').doc(id).update({ status: newStatus });
+      setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
+    } catch (err) { console.error(err); alert("Failed to update status."); }
   };
 
-  /* ─── CALCULATIONS ─── */
   const kpis = useMemo(() => {
     const totalLeads = leads.length;
     const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
-    const followups = leads.filter(l => ['New lead','Follow-up later','Contacted'].includes(l.status)).length;
+    const followups = leads.filter(l => ['New lead','Follow up','Contacted'].includes(l.status)).length;
     const converted = leads.filter(l => l.status === 'Converted to customer').length;
     const weekCutoff = Date.now() - 7 * 24 * 3600 * 1000;
-    const thisWeek = leads.filter(l => (l.createdAt?.toMillis?.() || l.createdAt || 0) > weekCutoff).length;
+    const thisWeek = leads.filter(l => {
+      const ts = l.createdAt?.toMillis?.() || l.createdAt || 0;
+      return ts > weekCutoff;
+    }).length;
     const uniqueVisitors = new Set(events.map(e => e.visitorId).filter(Boolean)).size;
     const cutoff = Date.now() - 3 * 60 * 1000;
     const online = new Set();
-    events.forEach(e => { const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; if (ts > cutoff && e.visitorId) online.add(e.visitorId); });
+    events.forEach(e => { 
+      const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; 
+      if (ts > cutoff && e.visitorId) online.add(e.visitorId); 
+    });
     return { totalLeads, qualified, followups, converted, thisWeek, uniqueVisitors, onlineNow: online.size };
   }, [leads, events]);
+
+  const scoreFor = (lead) => {
+    let s = 10;
+    if (/entrepreneur|business owner/i.test(lead.intent || '')) s += 20;
+    if (lead.business && lead.business !== '-') s += 15;
+    if (lead.details && lead.details.length > 0) s += 10;
+    if (lead.device) s += 5;
+    const vEvents = events.filter(e => e.visitorId === lead.visitorId).length;
+    s += Math.min(20, vEvents * 2);
+    return Math.min(100, s);
+  };
+  const scoreClass = (s) => s >= 60 ? 'score-hot' : s >= 35 ? 'score-warm' : 'score-cold';
+  const scoreLabel = (s) => s >= 60 ? 'HOT' : s >= 35 ? 'WARM' : 'COOL';
 
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
@@ -693,28 +760,22 @@ function AdminPortal({ onExit }) {
       }
       if (search.trim()) {
         const q = search.toLowerCase();
-        return (l.name || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q) || (l.business || '').toLowerCase().includes(q) || (l.phone || '').includes(q);
+        return (l.name || '').toLowerCase().includes(q) ||
+               (l.email || '').toLowerCase().includes(q) ||
+               (l.business || '').toLowerCase().includes(q) ||
+               (l.service || '').toLowerCase().includes(q);
       }
       return true;
     });
   }, [leads, search, statusFilter]);
 
-  const kanbanData = useMemo(() => {
-    const groups = {};
-    CRM_STATUSES.forEach(s => groups[s.id] = []);
-    filteredLeads.forEach(l => {
-      const st = l.status || 'New lead';
-      if (groups[st]) groups[st].push(l);
-      else groups['New lead'].push(l);
-    });
-    return groups;
-  }, [filteredLeads]);
-
   const visitorData = useMemo(() => {
     const byVisitor = {};
     events.forEach(e => {
       if (!e.visitorId) return;
-      if (!byVisitor[e.visitorId]) byVisitor[e.visitorId] = { id: e.visitorId, events: [], sessions: new Set(), device: e.device || null, platforms: new Set() };
+      if (!byVisitor[e.visitorId]) {
+        byVisitor[e.visitorId] = { id: e.visitorId, events: [], sessions: new Set(), device: e.device || null, platforms: new Set() };
+      }
       byVisitor[e.visitorId].events.push(e);
       if (e.sessionId) byVisitor[e.visitorId].sessions.add(e.sessionId);
       if (!byVisitor[e.visitorId].device && e.device) byVisitor[e.visitorId].device = e.device;
@@ -733,8 +794,16 @@ function AdminPortal({ onExit }) {
   const liveFeed = useMemo(() => events.slice(0, 12), [events]);
 
   const sparkline = useMemo(() => {
-    const now = Date.now(); const buckets = Array(20).fill(0);
-    events.forEach(e => { const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; const mins = (now - ts) / 60000; if (mins >= 0 && mins < 60) { const idx = 19 - Math.floor(mins / 3); if (idx >= 0 && idx < 20) buckets[idx]++; } });
+    const now = Date.now();
+    const buckets = Array(20).fill(0);
+    events.forEach(e => {
+      const ts = e.createdAt?.toMillis?.() || e.createdAt || 0;
+      const mins = (now - ts) / 60000;
+      if (mins >= 0 && mins < 60) {
+        const idx = 19 - Math.floor(mins / 3);
+        if (idx >= 0 && idx < 20) buckets[idx]++;
+      }
+    });
     return buckets;
   }, [events]);
   const sparkMax = Math.max(1, ...sparkline);
@@ -748,8 +817,8 @@ function AdminPortal({ onExit }) {
     const converted = leads.filter(l => l.status === 'Converted to customer').length;
     return [
       { label: 'Visitors', count: visitors, color: '#1B6CA8' },
-      { label: 'Engaged', count: engaged, color: '#7A4FA3' },
-      { label: 'Registered', count: submitted, color: '#E8730F' },
+      { label: 'Engaged (selected intent)', count: engaged, color: '#7A4FA3' },
+      { label: 'Registered leads', count: submitted, color: '#E8730F' },
       { label: 'Contacted', count: contacted, color: '#F5A623' },
       { label: 'Qualified', count: qualified, color: '#1E7B3C' },
       { label: 'Converted', count: converted, color: '#0F5C2A' }
@@ -761,126 +830,268 @@ function AdminPortal({ onExit }) {
     setSeeding(true);
     try {
       const demos = [
-        { name: '[DEMO] Chanda Mwale', email: 'chanda@demo.zm', phone: '+260971000111', business: 'Chanda Traders Ltd', intent: 'I am an entrepreneur or business owner', service: 'Business Registration & Compliance', status: 'Discussion underway', details: 'Need help registering with PACRA.', quotedAmount: 1500 },
-        { name: '[DEMO] Thandiwe Banda', email: 'thandiwe@demo.zm', phone: '+260971000222', business: 'Bloom Beauty', intent: 'I need business or administrative services', service: 'Financial Support & Management', status: 'New lead', details: 'Looking for bookkeeping support.', quotedAmount: 0 },
-        { name: '[DEMO] Mwila Phiri', email: 'mwila@demo.zm', phone: '+260971000333', business: '-', intent: 'I want to become a supplier or service partner', service: 'Other', status: 'Contacted', details: 'Supplies fabric from Tanzania.', quotedAmount: 0 },
-        { name: '[DEMO] Kelvin Zulu', email: 'kelvin@demo.zm', phone: '+260971000444', business: 'Zulu Logistics', intent: 'I am interested in investment or strategic partnerships', service: 'Venture Building Services', status: 'Quotation sent', details: 'Looking for equity partners.', quotedAmount: 8000 },
-        { name: '[DEMO] Naomi Chileshe', email: 'naomi@demo.zm', phone: '+260971000555', business: 'AgriCo', intent: 'I need business or administrative services', service: 'Administrative Services Desk', status: 'Converted to customer', details: 'Signed monthly retainer.', quotedAmount: 2500 },
-        { name: '[DEMO] Brian Tembo', email: 'brian@demo.zm', phone: '+260971000666', business: '-', intent: 'I am exploring the platform', service: 'Other', status: 'Not interested', details: 'Just browsing.', quotedAmount: 0 }
+        { name: '[DEMO] Chanda Mwale', email: 'chanda@demo.zm', business: 'Chanda Traders Ltd', intent: 'I am an entrepreneur or business owner', service: 'Business Registration & Compliance', status: 'Discussion underway', details: 'Need help registering with PACRA.' },
+        { name: '[DEMO] Thandiwe Banda', email: 'thandiwe@demo.zm', business: 'Bloom Beauty', intent: 'I need business or administrative services', service: 'Financial Support & Management', status: 'New lead', details: 'Looking for bookkeeping support.' },
+        { name: '[DEMO] Mwila Phiri', email: 'mwila@demo.zm', business: '-', intent: 'I want to become a supplier or service partner', service: 'Other', status: 'Contacted', details: 'Supplies fabric from Tanzania.' },
+        { name: '[DEMO] Kelvin Zulu', email: 'kelvin@demo.zm', business: 'Zulu Logistics', intent: 'I am interested in investment or strategic partnerships', service: 'Venture Building Services', status: 'Quotation sent', details: 'Looking for equity partners.' },
+        { name: '[DEMO] Naomi Chileshe', email: 'naomi@demo.zm', business: 'AgriCo', intent: 'I need business or administrative services', service: 'Administrative Services Desk', status: 'Converted to customer', details: 'Signed monthly retainer.' },
+        { name: '[DEMO] Brian Tembo', email: 'brian@demo.zm', business: '-', intent: 'I am exploring the platform', service: 'Other', status: 'Not interested', details: 'Just browsing.' }
       ];
       for (let i = 0; i < demos.length; i++) {
         await db.collection('se_leads').add({
-          ...demos[i], visitorId: 'v_demo_' + i, sessionId: 's_demo_' + i,
+          ...demos[i],
+          visitorId: 'v_demo_' + i,
+          sessionId: 's_demo_' + i,
           device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
-          createdAt: Date.now(), notes: [], followUpDate: null
+          createdAt: Date.now()
         });
       }
-      alert('Demo data seeded.');
-    } catch(e) { alert('Seeding failed: ' + e.message); } finally { setSeeding(false); }
+      const actions = ['page_view','intent_selected','field_focus','field_focus','form_submitted'];
+      for (let v = 0; v < 4; v++) {
+        for (let a = 0; a < actions.length; a++) {
+          await db.collection('se_events').add({
+            visitorId: 'v_demo_' + v,
+            sessionId: 's_demo_' + v,
+            platform: 'onboarding',
+            platformLabel: 'Onboarding & Leads',
+            action: actions[a],
+            details: a === 1 ? { intent: demos[v].intent } : a === 2 ? { field: 'name' } : {},
+            device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
+            createdAt: Date.now()
+          });
+        }
+      }
+      alert('Demo data seeded. It will appear live.');
+    } catch(e) {
+      console.error(e); alert('Seeding failed: ' + e.message);
+    } finally { setSeeding(false); }
   };
 
-  if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#E8730F' }}></i></div>;
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      onExit();
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', flexDirection: 'column', gap: 16 }}>
+        <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i>
+        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>Connecting to live data…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-layout fadein">
-      {/* Toasts */}
       <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 340 }}>
         {toasts.map(t => (
-          <div key={t.id} className={t.exiting ? 'toast-exit' : 'toast'} style={{ background: '#fff', borderLeft: '4px solid #1E7B3C', borderRadius: 8, padding: '14px 16px', boxShadow: '0 10px 30px rgba(10,31,18,.15)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(30,123,60,.12)', color: '#1E7B3C', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><i className="fas fa-user-plus"></i></span>
-            <div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, color: '#0A1F12' }}>{t.title}</div><div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>{t.sub}</div></div>
+          <div key={t.id} className={t.exiting ? 'toast-exit' : 'toast'} style={{
+            background: '#fff', borderLeft: '4px solid #1E7B3C', borderRadius: 8,
+            padding: '14px 16px', boxShadow: '0 10px 30px rgba(10,31,18,.15)',
+            display: 'flex', gap: 12, alignItems: 'flex-start'
+          }}>
+            <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(30,123,60,.12)', color: '#1E7B3C', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <i className="fas fa-user-plus"></i>
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0A1F12' }}>{t.title}</div>
+              <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>{t.sub}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}><i className={`fas ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i></button>
+      <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+        <i className={`fas ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
+      </button>
 
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">S</div>
-          <div><div style={{ fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>StartEasy</div><div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>CRM & Intelligence</div></div>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>StartEasy</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>User Intelligence</div>
+          </div>
         </div>
+
         <div style={{ flex: 1, paddingTop: 16 }}>
-          <div className="nav-section">Pipeline</div>
-          <div className={`nav-item ${activeTab === 'crm' ? 'active' : ''}`} onClick={() => { setActiveTab('crm'); setSidebarOpen(false); }}><i className="fas fa-filter"></i> Sales CRM</div>
-          <div className="nav-section">Intelligence</div>
-          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><i className="fas fa-chart-pie"></i> Dashboard</div>
-          <div className={`nav-item ${activeTab === 'visitors' ? 'active' : ''}`} onClick={() => { setActiveTab('visitors'); setSidebarOpen(false); }}><i className="fas fa-users-viewfinder"></i> Visitor Tracker</div>
+          <div className="nav-section">Overview</div>
+          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}>
+            <i className="fas fa-chart-pie"></i> Intelligence Dashboard
+          </div>
+          <div className="nav-section">CRM</div>
+          <div className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); setSidebarOpen(false); }}>
+            <i className="fas fa-filter"></i> Leads & Pipeline
+          </div>
+          <div className={`nav-item ${activeTab === 'visitors' ? 'active' : ''}`} onClick={() => { setActiveTab('visitors'); setSidebarOpen(false); }}>
+            <i className="fas fa-users-viewfinder"></i> Visitor Tracker
+          </div>
           <div className="nav-section">System</div>
-          <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}><i className="fas fa-sliders"></i> Settings</div>
+          <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}>
+            <i className="fas fa-sliders"></i> Settings
+          </div>
         </div>
+
         <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={() => { auth.signOut(); onExit(); }} className="btn" style={{ width: '100%', background: 'rgba(255,255,255,0.1)', color: '#fff' }}>Logout</button>
+          <button onClick={handleLogout} className="btn" style={{ width: '100%', fontSize: 12, padding: 10, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+            <i className="fas fa-sign-out-alt"></i> Secure Logout
+          </button>
         </div>
       </aside>
 
       <main className="admin-content">
-        {/* Top Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(34,197,94,.1)', color: '#0F5C2A', padding: '6px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em' }}><span className="live-dot"></span> LIVE</span>
-            <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}><i className="fas fa-circle" style={{ color: '#22c55e', fontSize: 8, marginRight: 6 }}></i>{kpis.onlineNow} online now</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(34,197,94,.1)', color: '#0F5C2A', padding: '6px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em' }}>
+              <span className="live-dot"></span> LIVE
+            </span>
+            <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>
+              <i className="fas fa-circle" style={{ color: '#22c55e', fontSize: 8, marginRight: 6 }}></i>
+              {kpis.onlineNow} online now
+            </span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setSoundOn(!soundOn)} className="btn btn-outline" style={{ padding: '8px 14px' }}><i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i></button>
-            <button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline" style={{ padding: '8px 14px' }}><i className="fas fa-download"></i> Export CSV</button>
+            <button onClick={() => setSoundOn(!soundOn)} className="btn btn-outline" style={{ padding: '8px 14px' }} title={soundOn ? 'Sound on' : 'Sound off'}>
+              <i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+            </button>
+            <button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline" style={{ padding: '8px 14px' }}>
+              <i className="fas fa-download"></i> Export CSV
+            </button>
           </div>
         </div>
 
-        {/* ─── SALES CRM ─── */}
-        {activeTab === 'crm' && (
-          <div className="fadein" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Sales Pipeline</h1><p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Drag or click to update leads.</p></div>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <input type="text" placeholder="Search leads..." className="form-input" style={{ width: 250, padding: '8px 12px' }} value={search} onChange={e => setSearch(e.target.value)} />
-                <div style={{ background: '#E2E8F0', borderRadius: 8, padding: 4, display: 'flex' }}>
-                  <button onClick={() => setCrmView('kanban')} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: crmView === 'kanban' ? '#fff' : 'transparent', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: crmView === 'kanban' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Board</button>
-                  <button onClick={() => setCrmView('list')} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: crmView === 'list' ? '#fff' : 'transparent', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: crmView === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>List</button>
-                </div>
+        <div className="fadein">
+          {activeTab === 'dashboard' && (
+            <>
+              <div style={{ marginBottom: 24 }}>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live Firestore stream. Everything updates in real time.</p>
               </div>
-            </div>
 
-            {crmView === 'kanban' ? (
-              <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 20, flex: 1 }}>
-                {CRM_STATUSES.map(col => (
-                  <div key={col.id} className="kanban-col">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 4px' }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: '#475569' }}>{col.label}</span>
-                      <span style={{ background: '#E2E8F0', color: '#475569', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 800 }}>{kanbanData[col.id].length}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20, marginBottom: 24 }}>
+                <KpiCard label="Registered Leads" val={kpis.totalLeads} icon="fa-user-check" color="#1B6CA8" sub={`${kpis.thisWeek} this week`} />
+                <KpiCard label="Online Right Now" val={kpis.onlineNow} icon="fa-signal" color="#1E7B3C" sub="active last 3 min" />
+                <KpiCard label="Qualified" val={kpis.qualified} icon="fa-bullseye" color="#7A4FA3" sub="discussion & beyond" />
+                <KpiCard label="Follow-ups" val={kpis.followups} icon="fa-clock" color="#B8564F" sub="need attention" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 20, marginBottom: 24 }}>
+                <div className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Activity · Last 60 min</h3>
+                      <p style={{ fontSize: 12, color: '#94A3B8', margin: '2px 0 0' }}>Events per 3-min bucket</p>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
-                      {kanbanData[col.id].map(lead => (
-                        <div key={lead.id} className="kanban-card" onClick={() => setSelectedLead(lead)}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1F12', marginBottom: 4 }}>{lead.name}</div>
-                          <div style={{ fontSize: 12, color: '#64748B', marginBottom: 8 }}>{lead.business}</div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span className={`status-badge ${col.color}`} style={{ fontSize: 9, padding: '2px 6px' }}>{lead.service?.substring(0, 15)}...</span>
-                            {lead.quotedAmount > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#1E7B3C' }}>K{lead.quotedAmount}</span>}
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.1)', padding: '4px 8px', borderRadius: 6 }}>
+                      {events.length} events
+                    </span>
+                  </div>
+                  <svg viewBox="0 0 200 60" preserveAspectRatio="none" style={{ width: '100%', height: 100 }}>
+                    {sparkline.map((v, i) => {
+                      const h = (v / sparkMax) * 56;
+                      return <rect key={i} x={i * 10 + 1} y={58 - h} width={8} height={h || 1} fill="#E8730F" rx="1.5" opacity={0.85} />;
+                    })}
+                  </svg>
+                </div>
+
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '18px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="live-dot"></span>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Live Activity</h3>
+                  </div>
+                  <div style={{ maxHeight: 230, overflowY: 'auto', padding: '0 20px 16px' }}>
+                    {liveFeed.length === 0 ? (
+                      <div style={{ padding: 20, textAlign: 'center', color: '#94A3B8', fontSize: 12 }}>Waiting for events…</div>
+                    ) : liveFeed.map(e => (
+                      <div key={e.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #F1F5F9', alignItems: 'flex-start' }}>
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(232,115,15,.12)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, marginTop: 1 }}>
+                          <i className={`fas ${e.action === 'form_submitted' ? 'fa-user-plus' : e.action === 'intent_selected' ? 'fa-mouse-pointer' : e.action === 'heartbeat' ? 'fa-heart' : e.action === 'page_view' ? 'fa-eye' : e.action === 'identify' ? 'fa-id-card' : 'fa-bolt'}`}></i>
+                        </span>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>
+                            {e.action.replace(/_/g, ' ')}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: '#94A3B8', fontWeight: 500, marginTop: 1 }}>
+                            {e.device?.browser || '—'} · {e.device?.device || '—'} · {timeAgo(e.createdAt)}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
-            ) : (
-              <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
-                <div style={{ overflowX: 'auto', height: '100%' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+
+              <div className="card" style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>Conversion Funnel</h3>
+                <p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 20px' }}>Every stage updates live.</p>
+                {funnel.map((stage, i) => {
+                  const base = funnel[0].count || 1;
+                  const pct = Math.round((stage.count / base) * 100);
+                  const prevCount = i === 0 ? stage.count : funnel[i-1].count;
+                  const dropoff = prevCount ? Math.round((1 - stage.count / prevCount) * 100) : 0;
+                  return (
+                    <div key={i} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginBottom: 5, color: '#475569' }}>
+                        <span>{stage.label}</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {stage.count} <span style={{ color: '#94A3B8', fontWeight: 500 }}>({pct}%)</span>
+                          {i > 0 && stage.count < prevCount && <span style={{ color: '#DC2626', fontWeight: 600, marginLeft: 8 }}>−{dropoff}%</span>}
+                        </span>
+                      </div>
+                      <div style={{ height: 22, background: '#F1F5F9', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.max(pct, 2)}%`, background: stage.color, borderRadius: 6, transition: 'width .7s cubic-bezier(.2,.8,.2,1)' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3>
+                  <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Latest 5</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                     <thead>
-                      <tr><th className="table-th">Name / Business</th><th className="table-th">Contact</th><th className="table-th">Status</th><th className="table-th">Quoted</th><th className="table-th">Follow-up</th></tr>
+                      <tr>
+                        <th className="table-th">User</th>
+                        <th className="table-th">Service</th>
+                        <th className="table-th">Score</th>
+                        <th className="table-th">Status</th>
+                        <th className="table-th">Added</th>
+                      </tr>
                     </thead>
                     <tbody>
-                      {filteredLeads.map(lead => {
-                        const st = CRM_STATUSES.find(s => s.id === lead.status) || CRM_STATUSES[0];
+                      {leads.length === 0 ? (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>
+                          No leads yet. Use the form or click <strong>Seed demo data</strong> in Settings.
+                        </td></tr>
+                      ) : leads.slice(0, 5).map(lead => {
+                        const s = scoreFor(lead);
                         return (
-                          <tr key={lead.id} onClick={() => setSelectedLead(lead)} style={{ cursor: 'pointer' }} className="hover:bg-gray-50">
-                            <td className="table-td"><div style={{ fontWeight: 700 }}>{lead.name}</div><div style={{ fontSize: 11, color: '#64748B' }}>{lead.business}</div></td>
-                            <td className="table-td"><div style={{ fontSize: 12 }}>{lead.phone !== '-' ? lead.phone : 'No phone'}</div><div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div></td>
-                            <td className="table-td"><span className={`status-badge ${st.color}`}>{st.label}</span></td>
-                            <td className="table-td" style={{ fontWeight: 700, color: lead.quotedAmount > 0 ? '#1E7B3C' : '#94A3B8' }}>{lead.quotedAmount > 0 ? `K${lead.quotedAmount}` : '—'}</td>
-                            <td className="table-td" style={{ fontSize: 12 }}>{lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString() : '—'}</td>
+                          <tr key={lead.id}>
+                            <td className="table-td">
+                              <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12 }}>{lead.service}</td>
+                            <td className="table-td">
+                              <span className={`score-pill ${scoreClass(s)}`}>{scoreLabel(s)} · {s}</span>
+                            </td>
+                            <td className="table-td">
+                              <span className={`status-badge ${
+                                lead.status === 'New lead' ? 'status-new' :
+                                lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
+                                lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
+                                lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
+                              }`}>{lead.status}</span>
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>{timeAgo(lead.createdAt)}</td>
                           </tr>
                         );
                       })}
@@ -888,121 +1099,255 @@ function AdminPortal({ onExit }) {
                   </table>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </>
+          )}
 
-        {/* ─── DASHBOARD ─── */}
-        {activeTab === 'dashboard' && (
-          <div className="fadein">
-            <div style={{ marginBottom: 24 }}><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1><p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live Firestore stream. Everything updates in real time.</p></div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20, marginBottom: 24 }}>
-              <KpiCard label="Registered Leads" val={kpis.totalLeads} icon="fa-user-check" color="#1B6CA8" sub={`${kpis.thisWeek} this week`} />
-              <KpiCard label="Online Right Now" val={kpis.onlineNow} icon="fa-signal" color="#1E7B3C" sub="active last 3 min" />
-              <KpiCard label="Qualified" val={kpis.qualified} icon="fa-bullseye" color="#7A4FA3" sub="discussion & beyond" />
-              <KpiCard label="Follow-ups" val={kpis.followups} icon="fa-clock" color="#B8564F" sub="need attention" />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 20, marginBottom: 24 }}>
-              <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}><div><h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Activity · Last 60 min</h3><p style={{ fontSize: 12, color: '#94A3B8', margin: '2px 0 0' }}>Events per 3-min bucket</p></div><span style={{ fontSize: 11, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.1)', padding: '4px 8px', borderRadius: 6 }}>{events.length} events</span></div>
-                <svg viewBox="0 0 200 60" preserveAspectRatio="none" style={{ width: '100%', height: 100 }}>{sparkline.map((v, i) => { const h = (v / sparkMax) * 56; return <rect key={i} x={i * 10 + 1} y={58 - h} width={8} height={h || 1} fill="#E8730F" rx="1.5" opacity={0.85} />; })}</svg>
+          {activeTab === 'leads' && (
+            <div className="fadein">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Leads & Pipeline</h1>
+                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{filteredLeads.length} of {leads.length} leads</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    placeholder="Search name, email, business…"
+                    value={search} onChange={e => setSearch(e.target.value)}
+                    className="select-sm" style={{ padding: '8px 12px', minWidth: 220, fontSize: 13 }}
+                  />
+                  <select className="select-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '8px 12px', fontSize: 13 }}>
+                    <option value="all">All statuses</option>
+                    <option value="active">Active only</option>
+                    <option value="New lead">New lead</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Discussion underway">Discussion underway</option>
+                    <option value="Quotation sent">Quotation sent</option>
+                    <option value="Follow up">Follow up</option>
+                    <option value="Converted to customer">Converted</option>
+                    <option value="Not interested">Not interested</option>
+                  </select>
+                </div>
               </div>
+
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '18px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}><span className="live-dot"></span><h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Live Activity</h3></div>
-                <div style={{ maxHeight: 230, overflowY: 'auto', padding: '0 20px 16px' }}>
-                  {liveFeed.map(e => (
-                    <div key={e.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #F1F5F9', alignItems: 'flex-start' }}>
-                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(232,115,15,.12)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, marginTop: 1 }}><i className={`fas ${e.action === 'form_submitted' ? 'fa-user-plus' : e.action === 'intent_selected' ? 'fa-mouse-pointer' : 'fa-heart'}`}></i></span>
-                      <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ')}</div><div style={{ fontSize: 10.5, color: '#94A3B8', fontWeight: 500, marginTop: 1 }}>{e.device?.browser || '—'} · {e.device?.device || '—'} · {timeAgo(e.createdAt)}</div></div>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 950 }}>
+                    <thead>
+                      <tr>
+                        <th className="table-th">User</th>
+                        <th className="table-th">Intent</th>
+                        <th className="table-th">Service</th>
+                        <th className="table-th">Score</th>
+                        <th className="table-th">Added</th>
+                        <th className="table-th">Status</th>
+                        <th className="table-th">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLeads.length === 0 ? (
+                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No matching leads.</td></tr>
+                      ) : filteredLeads.map(lead => {
+                        const s = scoreFor(lead);
+                        return (
+                          <tr key={lead.id}>
+                            <td className="table-td">
+                              <div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
+                              {lead.business !== '-' && <div style={{ fontSize: 11, color: '#E8730F', fontWeight: 600, marginTop: 2 }}>{lead.business}</div>}
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12, maxWidth: 200, whiteSpace: 'normal' }}>{lead.intent}</td>
+                            <td className="table-td">
+                              <span style={{ background: '#F1F5F9', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{lead.service}</span>
+                            </td>
+                            <td className="table-td">
+                              <span className={`score-pill ${scoreClass(s)}`}>{scoreLabel(s)} · {s}</span>
+                            </td>
+                            <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>
+                              {fmtDate(lead.createdAt)}
+                              <div style={{ fontSize: 10.5, marginTop: 2 }}>{timeAgo(lead.createdAt)}</div>
+                            </td>
+                            <td className="table-td">
+                              <span className={`status-badge ${
+                                lead.status === 'New lead' ? 'status-new' :
+                                lead.status === 'Follow up' || lead.status === 'Contacted' ? 'status-contacted' :
+                                lead.status === 'Review' || lead.status === 'Discussion underway' ? 'status-qualified' :
+                                lead.status === 'Converted to customer' ? 'status-converted' : 'status-lost'
+                              }`}>{lead.status}</span>
+                            </td>
+                            <td className="table-td">
+                              <select className="select-sm" value={lead.status} onChange={(e) => updateLeadStatus(lead.id, e.target.value)}>
+                                <option value="New lead">New lead</option>
+                                <option value="Contacted">Contacted</option>
+                                <option value="Discussion underway">Discussion underway</option>
+                                <option value="Quotation sent">Quotation sent</option>
+                                <option value="Follow up">Follow up</option>
+                                <option value="Converted to customer">Converted to customer</option>
+                                <option value="Not interested">Not interested</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
-            <div className="card" style={{ marginBottom: 24 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>Conversion Funnel</h3><p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 20px' }}>Every stage updates live.</p>
-              {funnel.map((stage, i) => {
-                const base = funnel[0].count || 1; const pct = Math.round((stage.count / base) * 100);
-                return (<div key={i} style={{ marginBottom: 12 }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginBottom: 5, color: '#475569' }}><span>{stage.label}</span><span>{stage.count} <span style={{ color: '#94A3B8', fontWeight: 500 }}>({pct}%)</span></span></div><div style={{ height: 22, background: '#F1F5F9', borderRadius: 6, overflow: 'hidden' }}><div style={{ height: '100%', width: `${Math.max(pct, 2)}%`, background: stage.color, borderRadius: 6, transition: 'width .7s' }} /></div></div>);
-              })}
-            </div>
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}><h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3><span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Latest 5</span></div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
-                  <thead><tr><th className="table-th">User</th><th className="table-th">Service</th><th className="table-th">Status</th><th className="table-th">Added</th></tr></thead>
-                  <tbody>{leads.slice(0, 5).map(lead => (
-                    <tr key={lead.id} onClick={() => setSelectedLead(lead)} style={{ cursor: 'pointer' }}>
-                      <td className="table-td"><div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div><div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div></td>
-                      <td className="table-td" style={{ fontSize: 12 }}>{lead.service}</td>
-                      <td className="table-td"><span className={`status-badge ${(CRM_STATUSES.find(s=>s.id===lead.status)||CRM_STATUSES[0]).color}`}>{lead.status}</span></td>
-                      <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>{timeAgo(lead.createdAt)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* ─── VISITOR TRACKER ─── */}
-        {activeTab === 'visitors' && (
-          <div className="fadein">
-            <div style={{ marginBottom: 24 }}><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Visitor Tracker</h1><p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Every device that lands on your page. {kpis.onlineNow} online now.</p></div>
-            <div className="card">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {visitorData.map(visitor => {
-                  const isOnline = (Date.now() - visitor.lastSeen) < 3 * 60 * 1000;
-                  return (
-                    <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
-                      <div onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F8FAFC', cursor: 'pointer', gap: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                          <span style={{ width: 40, height: 40, borderRadius: '50%', background: isOnline ? 'rgba(34,197,94,.12)' : 'rgba(232,115,15,0.1)', color: isOnline ? '#16a34a' : '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}><i className={`fas ${isOnline ? 'fa-signal' : 'fa-user-secret'}`}></i></span>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontFamily: 'monospace', fontSize: 12.5, fontWeight: 700, color: '#0A1F12', display: 'flex', alignItems: 'center', gap: 8 }}>{visitor.id} {isOnline && <span style={{ fontSize: 9, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.12)', padding: '2px 6px', borderRadius: 4 }}>ONLINE</span>}</div>
-                            <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>{visitor.device?.browser || '—'} · {visitor.device?.device || '—'} · {visitor.events.length} actions · {timeAgo(visitor.lastSeen)}</div>
-                          </div>
-                        </div><i className={`fas fa-chevron-${selectedVisitor === visitor.id ? 'up' : 'down'}`} style={{ color: '#94A3B8' }}></i>
-                      </div>
-                      {selectedVisitor === visitor.id && (
-                        <div style={{ padding: 20, background: '#fff', borderTop: '1px solid #E2E8F0' }}>
-                          {visitor.events.map((e, i) => (
-                            <div key={e.id} style={{ display: 'flex', gap: 14, paddingBottom: 12 }}>
-                              <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#E8730F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0 }}><i className="fas fa-check"></i></div>
-                              <div><div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ').toUpperCase()}</div><div style={{ fontSize: 10.5, color: '#94A3B8' }}>{new Date(e.createdAt?.toMillis?.() || e.createdAt).toLocaleString()}</div></div>
+          {activeTab === 'visitors' && (
+            <div className="fadein">
+              <div style={{ marginBottom: 24 }}>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Visitor Tracker</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Every device that lands on your page — even if they don't submit. {kpis.onlineNow} online now.</p>
+              </div>
+
+              <div className="card">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {visitorData.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>No visitors recorded yet.</div>
+                  ) : visitorData.map(visitor => {
+                    const isOnline = (Date.now() - visitor.lastSeen) < 3 * 60 * 1000;
+                    return (
+                      <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+                        <div
+                          onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F8FAFC', cursor: 'pointer', gap: 12 }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                            <span style={{ width: 40, height: 40, borderRadius: '50%', background: isOnline ? 'rgba(34,197,94,.12)' : 'rgba(232,115,15,0.1)', color: isOnline ? '#16a34a' : '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, position: 'relative' }}>
+                              <i className={`fas ${isOnline ? 'fa-signal' : 'fa-user-secret'}`}></i>
+                            </span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12.5, fontWeight: 700, color: '#0A1F12', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                {visitor.id}
+                                {isOnline && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.12)', padding: '2px 7px', borderRadius: 6 }}>
+                                    <span className="live-dot" style={{ width: 5, height: 5 }}></span> ONLINE
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>
+                                {visitor.device?.browser || '—'} · {visitor.device?.os || '—'} · {visitor.device?.device || '—'}
+                                {' · '}
+                                {visitor.events.length} action{visitor.events.length !== 1 ? 's' : ''}
+                                {' · '}
+                                {visitor.sessionCount} session{visitor.sessionCount !== 1 ? 's' : ''}
+                                {' · '}
+                                last {timeAgo(visitor.lastSeen)}
+                              </div>
                             </div>
-                          ))}
+                          </div>
+                          <i className={`fas fa-chevron-${selectedVisitor === visitor.id ? 'up' : 'down'}`} style={{ color: '#94A3B8', flexShrink: 0 }}></i>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+
+                        {selectedVisitor === visitor.id && (
+                          <div style={{ padding: 20, background: '#fff', borderTop: '1px solid #E2E8F0' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 18 }}>
+                              {[
+                                { label: 'Browser', val: visitor.device?.browser },
+                                { label: 'OS', val: visitor.device?.os },
+                                { label: 'Device', val: visitor.device?.device },
+                                { label: 'Screen', val: visitor.device?.screen },
+                                { label: 'Timezone', val: visitor.device?.timezone },
+                                { label: 'Referrer', val: visitor.device?.referrer }
+                              ].map((item, i) => (
+                                <div key={i} style={{ background: '#F8FAFC', borderRadius: 8, padding: '10px 12px' }}>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</div>
+                                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.val || '—'}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 12 }}>Activity Timeline</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                              {visitor.events.map((e, i) => (
+                                <div key={e.id} style={{ display: 'flex', gap: 14, paddingBottom: 14, position: 'relative' }}>
+                                  {i !== visitor.events.length - 1 && (
+                                    <div style={{ position: 'absolute', left: 11, top: 24, bottom: 0, width: 2, background: '#E2E8F0' }} />
+                                  )}
+                                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#E8730F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0, zIndex: 1 }}>
+                                    <i className={`fas ${e.action === 'form_submitted' ? 'fa-user-plus' : e.action === 'heartbeat' ? 'fa-heart' : e.action === 'identify' ? 'fa-id-card' : 'fa-check'}`}></i>
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ').toUpperCase()}</div>
+                                    {e.details && Object.keys(e.details).length > 0 && (
+                                      <div style={{ fontSize: 11.5, color: '#475569', marginTop: 2 }}>
+                                        {Object.entries(e.details).map(([k, v]) => <span key={k} style={{ marginRight: 10 }}><strong>{k}:</strong> {String(v)}</span>)}
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 2 }}>
+                                      {e.createdAt ? (e.createdAt.toDate ? new Date(e.createdAt.toDate()).toLocaleString() : new Date(e.createdAt).toLocaleString()) : 'Just now'}
+                                      {' · '}
+                                      session {e.sessionId?.slice(-6) || '—'}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ─── SETTINGS ─── */}
-        {activeTab === 'settings' && (
-          <div className="fadein">
-            <div style={{ marginBottom: 24 }}><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Settings</h1></div>
-            <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-              <div className="card"><h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Notifications</h3><p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Sound alerts when a new lead arrives.</p><button onClick={() => setSoundOn(!soundOn)} className={`btn ${soundOn ? 'btn-primary' : 'btn-outline'}`}><i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i> Sound is {soundOn ? 'ON' : 'OFF'}</button></div>
-              <div className="card"><h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Data Export</h3><p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Download all leads as CSV.</p><button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline"><i className="fas fa-download"></i> Export {leads.length} leads</button></div>
-              <div className="card"><h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Demo Data</h3><p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Populate portal with sample leads.</p><button onClick={seedDemo} disabled={seeding} className="btn btn-primary"><i className={`fas ${seeding ? 'fa-spinner fa-spin' : 'fa-flask'}`}></i> {seeding ? 'Seeding…' : 'Seed demo data'}</button></div>
+          {activeTab === 'settings' && (
+            <div className="fadein">
+              <div style={{ marginBottom: 24 }}>
+                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Settings</h1>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Portal preferences and demo tools.</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Notifications</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Sound alerts when a new lead arrives.</p>
+                  <button onClick={() => setSoundOn(!soundOn)} className={`btn ${soundOn ? 'btn-primary' : 'btn-outline'}`}>
+                    <i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i> Sound is {soundOn ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Data Export</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Download all leads as CSV.</p>
+                  <button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline">
+                    <i className="fas fa-download"></i> Export {leads.length} leads
+                  </button>
+                </div>
+
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Demo Data</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Populate the portal with sample leads + events tagged <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>[DEMO]</code>.</p>
+                  <button onClick={seedDemo} disabled={seeding} className="btn btn-primary">
+                    <i className={`fas ${seeding ? 'fa-spinner fa-spin' : 'fa-flask'}`}></i> {seeding ? 'Seeding…' : 'Seed demo data'}
+                  </button>
+                </div>
+
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 6px' }}>Tracker Status</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 12px' }}>Unified cross-platform tracker.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(34,197,94,.1)', borderRadius: 8, fontSize: 12.5, fontWeight: 700, color: '#0F5C2A' }}>
+                    <span className="live-dot"></span>
+                    {window.SE && window.SE.visitorId ? 'Active — visitor ID: ' + window.SE.visitorId.substring(0, 15) + '…' : 'Not loaded'}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0', lineHeight: 1.5 }}>
+                    View your full cross-platform journey at the <strong>Unified Visitor Intelligence</strong> dashboard.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
-
-      {/* Overlays */}
-      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={updateLead} />}
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MAIN APP
+   MAIN APP (Auth Gate)
    ═══════════════════════════════════════════════════════════════════ */
 function App() {
   const [view, setView] = useState('public');
@@ -1011,21 +1356,63 @@ function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
+    // Listen to Firebase Auth state
     const unsub = auth.onAuthStateChanged(async (u) => {
-      if (!u) { setUser(null); setIsAdmin(false); setCheckingAuth(false); return; }
+      if (!u) {
+        setUser(null);
+        setIsAdmin(false);
+        setCheckingAuth(false);
+        return;
+      }
+      
       setUser(u);
-      try { const snap = await db.collection('se_admins').doc(u.uid).get(); setIsAdmin(snap.exists); } 
-      catch (err) { setIsAdmin(false); } 
-      finally { setCheckingAuth(false); }
+      
+      // Check if the logged-in user is an admin in Firestore
+      try {
+        const snap = await db.collection('se_admins').doc(u.uid).get();
+        if (snap.exists) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+          // If they are logged in but not an admin, sign them out
+          await auth.signOut();
+        }
+      } catch (err) {
+        console.error("Admin verification failed:", err);
+        setIsAdmin(false);
+      } finally {
+        setCheckingAuth(false);
+      }
     });
     return () => unsub();
   }, []);
 
-  if (checkingAuth) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#E8730F' }}></i></div>;
+  const goAdmin = () => setView('admin');
+  const exitAdmin = () => { 
+    setView('public'); 
+    if(isAdmin) auth.signOut(); 
+  };
 
-  if (view === 'public') return <OnboardingForm onAdminClick={() => setView('admin')} />;
-  if (!user || !isAdmin) return <AdminLogin onExit={() => setView('public')} />;
-  return <AdminPortal onExit={() => { setView('public'); auth.signOut(); }} />;
+  if (checkingAuth) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', flexDirection: 'column', gap: 16 }}>
+        <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i>
+        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>Verifying secure session…</div>
+      </div>
+    );
+  }
+
+  if (view === 'public') {
+    return <OnboardingForm onAdminClick={goAdmin} />;
+  }
+
+  // If they click "Admin Portal" but aren't logged in, show the login screen
+  if (!user || !isAdmin) {
+    return <AdminLogin onExit={exitAdmin} />;
+  }
+
+  // If they are logged in and verified as an admin, show the portal
+  return <AdminPortal onExit={exitAdmin} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
