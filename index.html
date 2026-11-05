@@ -84,7 +84,6 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes slideOutRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
 .drawer-enter { animation: slideInRight .3s cubic-bezier(.2,.8,.2,1) forwards; }
-.drawer-exit { animation: slideOutRight .3s ease forwards; }
 
 .site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
 .header-content { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 24px; }
@@ -111,7 +110,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .btn-wa { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 18px; background: #25D366; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s; box-shadow: 0 10px 26px rgba(37,211,102,.3); margin-top: 12px; }
 .btn-wa:hover { background: #20ba59; transform: translateY(-2px); box-shadow: 0 16px 34px rgba(37,211,102,.45); }
 .btn-wa:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
-.error-msg { background: rgba(184,86,79,.08); border: 1px solid rgba(184,86,79,.3); color: #7C2318; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.error-msg { background: rgba(184,86,79,.08); border: 1px solid rgba(184,86,79,.3); color: #7C2318; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; word-break: break-word; }
 .success-msg { background: rgba(30,123,60,.08); border: 1px solid rgba(30,123,60,.3); color: #0F5C2A; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
 /* Admin */
@@ -149,6 +148,11 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .btn-primary { background: linear-gradient(135deg,#E8730F,#F5A623); color: #fff; box-shadow: 0 4px 12px rgba(232,115,15,.3); }
 .btn-outline { background: #fff; border: 1px solid #E2E8F0; color: #0A1F12; }
 .select-sm { padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 12.5px; font-weight: 600; font-family: inherit; color: #0A1F12; background: #fff; cursor: pointer; outline: none; }
+
+.score-pill { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; margin-left: 8px; display: inline-block; }
+.score-hot { background: #FEE2E2; color: #DC2626; }
+.score-warm { background: #FEF3C7; color: #D97706; }
+.score-cold { background: #E0E7FF; color: #4338CA; }
 
 @media (max-width: 1024px) {
   .admin-sidebar { transform: translateX(-100%); }
@@ -220,8 +224,60 @@ const DEVICE_INFO = (() => {
   return { ...parsed, screen: `${window.screen.width}×${window.screen.height}`, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, referrer: document.referrer || 'direct' };
 })();
 
+function exportLeadsCSV(leads) {
+  const headers = ['Name','Email','Phone','Business','Intent','Service','Status','Quoted Amount','Follow-up Date','Created'];
+  const rows = leads.map(l => [
+    l.name||'', l.email||'', l.phone||'', l.business||'', l.intent||'', l.service||'',
+    l.status||'', l.quotedAmount||0, l.followUpDate ? new Date(l.followUpDate).toISOString() : '', 
+    l.createdAt ? (l.createdAt.toDate ? new Date(l.createdAt.toDate()).toISOString() : new Date(l.createdAt).toISOString()) : ''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `starteasy-leads-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function useCountUp(target) {
+  const [val, setVal] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const start = prev.current;
+    const t0 = performance.now();
+    let raf;
+    const step = (t) => {
+      const p = Math.min((t - t0) / 600, 1);
+      const e = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(start + (target - start) * e));
+      if (p < 1) raf = requestAnimationFrame(step);
+      else prev.current = target;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return val;
+}
+
+function KpiCard({ label, val, icon, color, sub }) {
+  const animated = useCountUp(val);
+  return (
+    <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+        <span style={{ width: 32, height: 32, borderRadius: 8, background: color + '15', color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <i className={`fas ${icon}`}></i>
+        </span>
+      </div>
+      <div className="kpi-value">{animated}</div>
+      {sub && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4, fontWeight: 600 }}>{sub}</div>}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════
-   PUBLIC ONBOARDING FORM (Now with Phone)
+   PUBLIC ONBOARDING FORM
    ═══════════════════════════════════════════════════════════════════ */
 function OnboardingForm({ onAdminClick }) {
   const [intent, setIntent] = useState('');
@@ -234,6 +290,29 @@ function OnboardingForm({ onAdminClick }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [recentCount, setRecentCount] = useState(null);
+  const focusedRef = useRef(new Set());
+
+  useEffect(() => {
+    const start = Date.now();
+    const leave = () => {
+      const secs = Math.round((Date.now() - start) / 1000);
+      if (secs > 3 && window.SE) window.SE.track('session_end', { duration_secs: secs });
+    };
+    window.addEventListener('beforeunload', leave);
+    const unsub = db.collection('se_leads').orderBy('createdAt','desc').limit(20)
+      .onSnapshot(snap => {
+        const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+        let n = 0;
+        snap.forEach(d => {
+          const data = d.data();
+          const ts = data.createdAt?.toMillis ? data.createdAt.toMillis() : (typeof data.createdAt === 'number' ? data.createdAt : 0);
+          if (ts > cutoff) n++;
+        });
+        setRecentCount(n);
+      }, () => {});
+    return () => { window.removeEventListener('beforeunload', leave); unsub(); };
+  }, []);
 
   const intentOptions = [
     "I need business or administrative services",
@@ -252,8 +331,14 @@ function OnboardingForm({ onAdminClick }) {
     "Other"
   ];
 
+  const handleIntentSelect = (opt) => {
+    setIntent(opt); setQ2Answer(''); setError('');
+    if (window.SE) window.SE.track('intent_selected', { intent: opt });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(''); setSuccess(false);
     if (!intent) return setError("Please select what brings you to StartEasy.");
     if (!q2Answer) return setError("Please answer the second question.");
     if (!fullName.trim()) return setError("Please enter your full name.");
@@ -269,7 +354,7 @@ function OnboardingForm({ onAdminClick }) {
         createdAt: Date.now()
       });
 
-      if (window.SE && typeof window.SE.track === 'function') {
+      if (window.SE && typeof window.SE.identify === 'function') {
         window.SE.track('form_submitted', { name: fullName, service: q2Answer });
         window.SE.identify({ email, name: fullName, role: 'lead', phone });
       }
@@ -336,6 +421,12 @@ function OnboardingForm({ onAdminClick }) {
         <div className="fadein" style={{ textAlign: 'center', marginBottom: 32 }}>
           <h1 className="serif" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', color: 'var(--forest)', marginBottom: 16, lineHeight: 1.1 }}>Welcome to <span style={{ color: 'var(--orange)' }}>StartEasy Zambia</span></h1>
           <p style={{ fontSize: 16, color: 'rgba(10,31,18,.65)', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>Tell us a little about what brings you here so we can connect you with the right support.</p>
+          {recentCount !== null && recentCount > 0 && (
+            <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(30,123,60,.08)', color: '#0F5C2A', padding: '8px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
+              <span className="live-dot" style={{ background: '#1E7B3C' }}></span>
+              {recentCount} {recentCount === 1 ? 'person has' : 'people have'} joined this week
+            </div>
+          )}
         </div>
 
         <div className="form-card fadein">
@@ -346,7 +437,7 @@ function OnboardingForm({ onAdminClick }) {
               <label className="form-label">1. What brings you to StartEasy? <span style={{ color: 'var(--red)' }}>*</span></label>
               <div style={{ marginTop: 12 }}>
                 {intentOptions.map((opt, i) => (
-                  <div key={i} className={`radio-tile ${intent === opt ? 'selected' : ''}`} onClick={() => { setIntent(opt); setQ2Answer(''); }}>
+                  <div key={i} className={`radio-tile ${intent === opt ? 'selected' : ''}`} onClick={() => handleIntentSelect(opt)}>
                     <div className="radio-dot"></div><div className="radio-text">{opt}</div>
                   </div>
                 ))}
@@ -435,7 +526,6 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', justifyContent: 'flex-end' }}>
       <div className="drawer-enter" style={{ width: '100%', maxWidth: 500, background: '#F8FAFC', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' }}>
-        {/* Header */}
         <div style={{ background: '#0A1F12', padding: '24px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginBottom: 4 }}>Lead Profile</div>
@@ -445,7 +535,6 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 20, cursor: 'pointer' }}><i className="fas fa-times"></i></button>
         </div>
 
-        {/* Quick Actions */}
         <div style={{ display: 'flex', gap: 10, padding: '16px 24px', background: '#fff', borderBottom: '1px solid #E2E8F0' }}>
           {waLink ? (
             <a href={waLink} target="_blank" rel="noreferrer" className="btn" style={{ flex: 1, background: '#25D366', color: '#fff', textDecoration: 'none' }}><i className="fab fa-whatsapp"></i> WhatsApp</a>
@@ -455,9 +544,7 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
           <a href={`mailto:${lead.email}`} className="btn btn-outline" style={{ flex: 1, textDecoration: 'none' }}><i className="fas fa-envelope"></i> Email</a>
         </div>
 
-        {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-          {/* Status & Deal Info */}
           <div className="card" style={{ marginBottom: 24 }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 16 }}>Pipeline Status</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -479,7 +566,6 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
             <button onClick={handleSave} className="btn btn-primary" style={{ width: '100%' }}><i className="fas fa-save"></i> Save Changes</button>
           </div>
 
-          {/* Lead Context */}
           <div className="card" style={{ marginBottom: 24, background: '#F1F5F9' }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Original Inquiry</h3>
             <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}><strong>Intent:</strong> {lead.intent}</div>
@@ -488,7 +574,6 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
             <div style={{ fontSize: 11, color: '#64748B', marginTop: 12 }}>Captured: {new Date(lead.createdAt?.toMillis ? lead.createdAt.toMillis() : lead.createdAt).toLocaleString()} via {lead.device?.browser || 'Web'}</div>
           </div>
 
-          {/* Activity Feed */}
           <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Activity & Notes</h3>
           
           <form onSubmit={handleAddNote} style={{ marginBottom: 20 }}>
@@ -515,22 +600,28 @@ function LeadDrawer({ lead, onClose, onUpdate }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN PORTAL & CRM BOARD
+   ADMIN PORTAL (CRM + DASHBOARD + TRACKER)
    ═══════════════════════════════════════════════════════════════════ */
 function AdminPortal({ onExit }) {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [leads, setLeads] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState(null);
-  
-  // CRM View Mode
-  const [crmView, setCrmView] = useState('kanban'); // 'kanban' | 'list'
+  const [selectedVisitor, setSelectedVisitor] = useState(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const [toasts, setToasts] = useState([]);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [seeding, setSeeding] = useState(false);
+  const [crmView, setCrmView] = useState('kanban');
 
   const dataLoadedRef = useRef(false);
   const toastedRef = useRef(new Set());
-  const [toasts, setToasts] = useState([]);
+
+  const [, forceTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => forceTick(n => n + 1), 1000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
     const unsubLeads = db.collection('se_leads').orderBy('createdAt', 'desc').onSnapshot(snap => {
@@ -544,76 +635,203 @@ function AdminPortal({ onExit }) {
     return () => { unsubLeads(); unsubEvents(); };
   }, []);
 
+  useEffect(() => {
+    if (!dataLoadedRef.current || leads.length === 0) return;
+    const newest = leads[0];
+    const ts = newest.createdAt?.toMillis?.() || newest.createdAt || 0;
+    if (ts > Date.now() - 10000 && !toastedRef.current.has(newest.id)) {
+      toastedRef.current.add(newest.id);
+      const toastId = `t_${Date.now()}`;
+      setToasts(prev => [...prev, { id: toastId, title: `New lead: ${newest.name}`, sub: newest.service || newest.intent }]);
+      if (soundOn) {
+        try {
+          const ctx = new (window.AudioContext||window.webkitAudioContext)();
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination); o.type = 'sine'; o.frequency.value = 880;
+          g.gain.setValueAtTime(0.0001, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+          o.start(); o.stop(ctx.currentTime + 0.36); setTimeout(()=>ctx.close(),500);
+        } catch(e){}
+      }
+      setTimeout(() => {
+        setToasts(prev => prev.map(t => t.id === toastId ? { ...t, exiting: true } : t));
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toastId)), 320);
+      }, 5200);
+    }
+  }, [leads, soundOn]);
+
   const updateLead = async (id, updates) => {
     try {
       await db.collection('se_leads').doc(id).update(updates);
-      // Update local state instantly for UX
       setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
-      if (selectedLead && selectedLead.id === id) {
-        setSelectedLead({ ...selectedLead, ...updates });
-      }
+      if (selectedLead && selectedLead.id === id) setSelectedLead({ ...selectedLead, ...updates });
     } catch (err) { alert("Error saving: " + err.message); }
   };
 
-  // Group leads by status for Kanban
+  /* ─── CALCULATIONS ─── */
+  const kpis = useMemo(() => {
+    const totalLeads = leads.length;
+    const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
+    const followups = leads.filter(l => ['New lead','Follow-up later','Contacted'].includes(l.status)).length;
+    const converted = leads.filter(l => l.status === 'Converted to customer').length;
+    const weekCutoff = Date.now() - 7 * 24 * 3600 * 1000;
+    const thisWeek = leads.filter(l => (l.createdAt?.toMillis?.() || l.createdAt || 0) > weekCutoff).length;
+    const uniqueVisitors = new Set(events.map(e => e.visitorId).filter(Boolean)).size;
+    const cutoff = Date.now() - 3 * 60 * 1000;
+    const online = new Set();
+    events.forEach(e => { const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; if (ts > cutoff && e.visitorId) online.add(e.visitorId); });
+    return { totalLeads, qualified, followups, converted, thisWeek, uniqueVisitors, onlineNow: online.size };
+  }, [leads, events]);
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'active') {
+          if (['Converted to customer','Not interested'].includes(l.status)) return false;
+        } else if (l.status !== statusFilter) return false;
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return (l.name || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q) || (l.business || '').toLowerCase().includes(q) || (l.phone || '').includes(q);
+      }
+      return true;
+    });
+  }, [leads, search, statusFilter]);
+
   const kanbanData = useMemo(() => {
     const groups = {};
     CRM_STATUSES.forEach(s => groups[s.id] = []);
-    leads.forEach(l => {
+    filteredLeads.forEach(l => {
       const st = l.status || 'New lead';
       if (groups[st]) groups[st].push(l);
-      else groups['New lead'].push(l); // fallback
+      else groups['New lead'].push(l);
     });
     return groups;
-  }, [leads]);
+  }, [filteredLeads]);
 
-  const filteredLeads = useMemo(() => {
-    if (!search.trim()) return leads;
-    const q = search.toLowerCase();
-    return leads.filter(l => 
-      (l.name || '').toLowerCase().includes(q) || 
-      (l.business || '').toLowerCase().includes(q) ||
-      (l.email || '').toLowerCase().includes(q) ||
-      (l.phone || '').toLowerCase().includes(q)
-    );
-  }, [leads, search]);
+  const visitorData = useMemo(() => {
+    const byVisitor = {};
+    events.forEach(e => {
+      if (!e.visitorId) return;
+      if (!byVisitor[e.visitorId]) byVisitor[e.visitorId] = { id: e.visitorId, events: [], sessions: new Set(), device: e.device || null, platforms: new Set() };
+      byVisitor[e.visitorId].events.push(e);
+      if (e.sessionId) byVisitor[e.visitorId].sessions.add(e.sessionId);
+      if (!byVisitor[e.visitorId].device && e.device) byVisitor[e.visitorId].device = e.device;
+      if (e.platform) byVisitor[e.visitorId].platforms.add(e.platform);
+    });
+    Object.values(byVisitor).forEach(v => {
+      v.events.sort((a, b) => (b.createdAt?.toMillis?.() || b.createdAt || 0) - (a.createdAt?.toMillis?.() || a.createdAt || 0));
+      v.firstSeen = v.events[v.events.length - 1]?.createdAt?.toMillis?.() || v.events[v.events.length - 1]?.createdAt || Date.now();
+      v.lastSeen = v.events[0]?.createdAt?.toMillis?.() || v.events[0]?.createdAt || Date.now();
+      v.sessionCount = v.sessions.size;
+      v.platformList = Array.from(v.platforms);
+    });
+    return Object.values(byVisitor).sort((a, b) => b.lastSeen - a.lastSeen);
+  }, [events]);
+
+  const liveFeed = useMemo(() => events.slice(0, 12), [events]);
+
+  const sparkline = useMemo(() => {
+    const now = Date.now(); const buckets = Array(20).fill(0);
+    events.forEach(e => { const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; const mins = (now - ts) / 60000; if (mins >= 0 && mins < 60) { const idx = 19 - Math.floor(mins / 3); if (idx >= 0 && idx < 20) buckets[idx]++; } });
+    return buckets;
+  }, [events]);
+  const sparkMax = Math.max(1, ...sparkline);
+
+  const funnel = useMemo(() => {
+    const visitors = kpis.uniqueVisitors;
+    const engaged = new Set(events.filter(e => e.action === 'intent_selected').map(e => e.visitorId)).size;
+    const submitted = leads.length;
+    const contacted = leads.filter(l => l.status !== 'New lead').length;
+    const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
+    const converted = leads.filter(l => l.status === 'Converted to customer').length;
+    return [
+      { label: 'Visitors', count: visitors, color: '#1B6CA8' },
+      { label: 'Engaged', count: engaged, color: '#7A4FA3' },
+      { label: 'Registered', count: submitted, color: '#E8730F' },
+      { label: 'Contacted', count: contacted, color: '#F5A623' },
+      { label: 'Qualified', count: qualified, color: '#1E7B3C' },
+      { label: 'Converted', count: converted, color: '#0F5C2A' }
+    ];
+  }, [events, leads, kpis.uniqueVisitors]);
+
+  const seedDemo = async () => {
+    if (!confirm("This will add 6 demo leads and ~20 demo events with [DEMO] tags. Continue?")) return;
+    setSeeding(true);
+    try {
+      const demos = [
+        { name: '[DEMO] Chanda Mwale', email: 'chanda@demo.zm', phone: '+260971000111', business: 'Chanda Traders Ltd', intent: 'I am an entrepreneur or business owner', service: 'Business Registration & Compliance', status: 'Discussion underway', details: 'Need help registering with PACRA.', quotedAmount: 1500 },
+        { name: '[DEMO] Thandiwe Banda', email: 'thandiwe@demo.zm', phone: '+260971000222', business: 'Bloom Beauty', intent: 'I need business or administrative services', service: 'Financial Support & Management', status: 'New lead', details: 'Looking for bookkeeping support.', quotedAmount: 0 },
+        { name: '[DEMO] Mwila Phiri', email: 'mwila@demo.zm', phone: '+260971000333', business: '-', intent: 'I want to become a supplier or service partner', service: 'Other', status: 'Contacted', details: 'Supplies fabric from Tanzania.', quotedAmount: 0 },
+        { name: '[DEMO] Kelvin Zulu', email: 'kelvin@demo.zm', phone: '+260971000444', business: 'Zulu Logistics', intent: 'I am interested in investment or strategic partnerships', service: 'Venture Building Services', status: 'Quotation sent', details: 'Looking for equity partners.', quotedAmount: 8000 },
+        { name: '[DEMO] Naomi Chileshe', email: 'naomi@demo.zm', phone: '+260971000555', business: 'AgriCo', intent: 'I need business or administrative services', service: 'Administrative Services Desk', status: 'Converted to customer', details: 'Signed monthly retainer.', quotedAmount: 2500 },
+        { name: '[DEMO] Brian Tembo', email: 'brian@demo.zm', phone: '+260971000666', business: '-', intent: 'I am exploring the platform', service: 'Other', status: 'Not interested', details: 'Just browsing.', quotedAmount: 0 }
+      ];
+      for (let i = 0; i < demos.length; i++) {
+        await db.collection('se_leads').add({
+          ...demos[i], visitorId: 'v_demo_' + i, sessionId: 's_demo_' + i,
+          device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
+          createdAt: Date.now(), notes: [], followUpDate: null
+        });
+      }
+      alert('Demo data seeded.');
+    } catch(e) { alert('Seeding failed: ' + e.message); } finally { setSeeding(false); }
+  };
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#E8730F' }}></i></div>;
 
   return (
     <div className="admin-layout fadein">
-      {/* Sidebar */}
-      <aside className="admin-sidebar">
+      {/* Toasts */}
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 340 }}>
+        {toasts.map(t => (
+          <div key={t.id} className={t.exiting ? 'toast-exit' : 'toast'} style={{ background: '#fff', borderLeft: '4px solid #1E7B3C', borderRadius: 8, padding: '14px 16px', boxShadow: '0 10px 30px rgba(10,31,18,.15)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(30,123,60,.12)', color: '#1E7B3C', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><i className="fas fa-user-plus"></i></span>
+            <div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, color: '#0A1F12' }}>{t.title}</div><div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>{t.sub}</div></div>
+          </div>
+        ))}
+      </div>
+
+      <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}><i className={`fas ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i></button>
+
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">S</div>
-          <div>
-            <div style={{ fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>StartEasy</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>CRM & Intelligence</div>
-          </div>
+          <div><div style={{ fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>StartEasy</div><div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>CRM & Intelligence</div></div>
         </div>
         <div style={{ flex: 1, paddingTop: 16 }}>
           <div className="nav-section">Pipeline</div>
-          <div className={`nav-item ${activeTab === 'crm' ? 'active' : ''}`} onClick={() => setActiveTab('crm')}><i className="fas fa-filter"></i> Sales CRM</div>
+          <div className={`nav-item ${activeTab === 'crm' ? 'active' : ''}`} onClick={() => { setActiveTab('crm'); setSidebarOpen(false); }}><i className="fas fa-filter"></i> Sales CRM</div>
           <div className="nav-section">Intelligence</div>
-          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><i className="fas fa-chart-pie"></i> Dashboard</div>
-          <div className={`nav-item ${activeTab === 'visitors' ? 'active' : ''}`} onClick={() => setActiveTab('visitors')}><i className="fas fa-users-viewfinder"></i> Visitor Tracker</div>
+          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><i className="fas fa-chart-pie"></i> Dashboard</div>
+          <div className={`nav-item ${activeTab === 'visitors' ? 'active' : ''}`} onClick={() => { setActiveTab('visitors'); setSidebarOpen(false); }}><i className="fas fa-users-viewfinder"></i> Visitor Tracker</div>
+          <div className="nav-section">System</div>
+          <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}><i className="fas fa-sliders"></i> Settings</div>
         </div>
         <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <button onClick={() => { auth.signOut(); onExit(); }} className="btn" style={{ width: '100%', background: 'rgba(255,255,255,0.1)', color: '#fff' }}>Logout</button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="admin-content">
-        
-        {/* ─── CRM VIEW ─── */}
+        {/* Top Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(34,197,94,.1)', color: '#0F5C2A', padding: '6px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em' }}><span className="live-dot"></span> LIVE</span>
+            <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}><i className="fas fa-circle" style={{ color: '#22c55e', fontSize: 8, marginRight: 6 }}></i>{kpis.onlineNow} online now</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setSoundOn(!soundOn)} className="btn btn-outline" style={{ padding: '8px 14px' }}><i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i></button>
+            <button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline" style={{ padding: '8px 14px' }}><i className="fas fa-download"></i> Export CSV</button>
+          </div>
+        </div>
+
+        {/* ─── SALES CRM ─── */}
         {activeTab === 'crm' && (
-          <div className="fadein" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}>
+          <div className="fadein" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div>
-                <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Sales Pipeline</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{leads.length} total leads</p>
-              </div>
+              <div><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Sales Pipeline</h1><p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Drag or click to update leads.</p></div>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <input type="text" placeholder="Search leads..." className="form-input" style={{ width: 250, padding: '8px 12px' }} value={search} onChange={e => setSearch(e.target.value)} />
                 <div style={{ background: '#E2E8F0', borderRadius: 8, padding: 4, display: 'flex' }}>
@@ -632,7 +850,7 @@ function AdminPortal({ onExit }) {
                       <span style={{ background: '#E2E8F0', color: '#475569', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 800 }}>{kanbanData[col.id].length}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
-                      {kanbanData[col.id].filter(l => filteredLeads.includes(l)).map(lead => (
+                      {kanbanData[col.id].map(lead => (
                         <div key={lead.id} className="kanban-card" onClick={() => setSelectedLead(lead)}>
                           <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1F12', marginBottom: 4 }}>{lead.name}</div>
                           <div style={{ fontSize: 12, color: '#64748B', marginBottom: 8 }}>{lead.business}</div>
@@ -651,32 +869,18 @@ function AdminPortal({ onExit }) {
                 <div style={{ overflowX: 'auto', height: '100%' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr>
-                        <th className="table-th">Name / Business</th>
-                        <th className="table-th">Contact</th>
-                        <th className="table-th">Status</th>
-                        <th className="table-th">Quoted</th>
-                        <th className="table-th">Follow-up</th>
-                        <th className="table-th">Added</th>
-                      </tr>
+                      <tr><th className="table-th">Name / Business</th><th className="table-th">Contact</th><th className="table-th">Status</th><th className="table-th">Quoted</th><th className="table-th">Follow-up</th></tr>
                     </thead>
                     <tbody>
                       {filteredLeads.map(lead => {
                         const st = CRM_STATUSES.find(s => s.id === lead.status) || CRM_STATUSES[0];
                         return (
                           <tr key={lead.id} onClick={() => setSelectedLead(lead)} style={{ cursor: 'pointer' }} className="hover:bg-gray-50">
-                            <td className="table-td">
-                              <div style={{ fontWeight: 700 }}>{lead.name}</div>
-                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.business}</div>
-                            </td>
-                            <td className="table-td">
-                              <div style={{ fontSize: 12 }}>{lead.phone !== '-' ? lead.phone : 'No phone'}</div>
-                              <div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div>
-                            </td>
+                            <td className="table-td"><div style={{ fontWeight: 700 }}>{lead.name}</div><div style={{ fontSize: 11, color: '#64748B' }}>{lead.business}</div></td>
+                            <td className="table-td"><div style={{ fontSize: 12 }}>{lead.phone !== '-' ? lead.phone : 'No phone'}</div><div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div></td>
                             <td className="table-td"><span className={`status-badge ${st.color}`}>{st.label}</span></td>
                             <td className="table-td" style={{ fontWeight: 700, color: lead.quotedAmount > 0 ? '#1E7B3C' : '#94A3B8' }}>{lead.quotedAmount > 0 ? `K${lead.quotedAmount}` : '—'}</td>
                             <td className="table-td" style={{ fontSize: 12 }}>{lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString() : '—'}</td>
-                            <td className="table-td" style={{ fontSize: 12, color: '#64748B' }}>{timeAgo(lead.createdAt)}</td>
                           </tr>
                         );
                       })}
@@ -688,37 +892,111 @@ function AdminPortal({ onExit }) {
           </div>
         )}
 
-        {/* ─── DASHBOARD (Simplified for this update) ─── */}
+        {/* ─── DASHBOARD ─── */}
         {activeTab === 'dashboard' && (
           <div className="fadein">
-            <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>CRM Dashboard</h1>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+            <div style={{ marginBottom: 24 }}><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>User & Lead Intelligence</h1><p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live Firestore stream. Everything updates in real time.</p></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20, marginBottom: 24 }}>
+              <KpiCard label="Registered Leads" val={kpis.totalLeads} icon="fa-user-check" color="#1B6CA8" sub={`${kpis.thisWeek} this week`} />
+              <KpiCard label="Online Right Now" val={kpis.onlineNow} icon="fa-signal" color="#1E7B3C" sub="active last 3 min" />
+              <KpiCard label="Qualified" val={kpis.qualified} icon="fa-bullseye" color="#7A4FA3" sub="discussion & beyond" />
+              <KpiCard label="Follow-ups" val={kpis.followups} icon="fa-clock" color="#B8564F" sub="need attention" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 20, marginBottom: 24 }}>
               <div className="card">
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B' }}>TOTAL LEADS</div>
-                <div className="kpi-value">{leads.length}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}><div><h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Activity · Last 60 min</h3><p style={{ fontSize: 12, color: '#94A3B8', margin: '2px 0 0' }}>Events per 3-min bucket</p></div><span style={{ fontSize: 11, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.1)', padding: '4px 8px', borderRadius: 6 }}>{events.length} events</span></div>
+                <svg viewBox="0 0 200 60" preserveAspectRatio="none" style={{ width: '100%', height: 100 }}>{sparkline.map((v, i) => { const h = (v / sparkMax) * 56; return <rect key={i} x={i * 10 + 1} y={58 - h} width={8} height={h || 1} fill="#E8730F" rx="1.5" opacity={0.85} />; })}</svg>
               </div>
-              <div className="card">
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B' }}>CONVERTED</div>
-                <div className="kpi-value" style={{ color: '#1E7B3C' }}>{leads.filter(l => l.status === 'Converted to customer').length}</div>
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '18px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}><span className="live-dot"></span><h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Live Activity</h3></div>
+                <div style={{ maxHeight: 230, overflowY: 'auto', padding: '0 20px 16px' }}>
+                  {liveFeed.map(e => (
+                    <div key={e.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #F1F5F9', alignItems: 'flex-start' }}>
+                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(232,115,15,.12)', color: '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, marginTop: 1 }}><i className={`fas ${e.action === 'form_submitted' ? 'fa-user-plus' : e.action === 'intent_selected' ? 'fa-mouse-pointer' : 'fa-heart'}`}></i></span>
+                      <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ')}</div><div style={{ fontSize: 10.5, color: '#94A3B8', fontWeight: 500, marginTop: 1 }}>{e.device?.browser || '—'} · {e.device?.device || '—'} · {timeAgo(e.createdAt)}</div></div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="card">
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B' }}>PIPELINE VALUE</div>
-                <div className="kpi-value" style={{ color: '#E8730F' }}>K{leads.reduce((acc, l) => acc + (Number(l.quotedAmount) || 0), 0).toLocaleString()}</div>
+            </div>
+            <div className="card" style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>Conversion Funnel</h3><p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 20px' }}>Every stage updates live.</p>
+              {funnel.map((stage, i) => {
+                const base = funnel[0].count || 1; const pct = Math.round((stage.count / base) * 100);
+                return (<div key={i} style={{ marginBottom: 12 }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginBottom: 5, color: '#475569' }}><span>{stage.label}</span><span>{stage.count} <span style={{ color: '#94A3B8', fontWeight: 500 }}>({pct}%)</span></span></div><div style={{ height: 22, background: '#F1F5F9', borderRadius: 6, overflow: 'hidden' }}><div style={{ height: '100%', width: `${Math.max(pct, 2)}%`, background: stage.color, borderRadius: 6, transition: 'width .7s' }} /></div></div>);
+              })}
+            </div>
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}><h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3><span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Latest 5</span></div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                  <thead><tr><th className="table-th">User</th><th className="table-th">Service</th><th className="table-th">Status</th><th className="table-th">Added</th></tr></thead>
+                  <tbody>{leads.slice(0, 5).map(lead => (
+                    <tr key={lead.id} onClick={() => setSelectedLead(lead)} style={{ cursor: 'pointer' }}>
+                      <td className="table-td"><div style={{ fontWeight: 700, color: '#0A1F12' }}>{lead.name}</div><div style={{ fontSize: 11, color: '#64748B' }}>{lead.email}</div></td>
+                      <td className="table-td" style={{ fontSize: 12 }}>{lead.service}</td>
+                      <td className="table-td"><span className={`status-badge ${(CRM_STATUSES.find(s=>s.id===lead.status)||CRM_STATUSES[0]).color}`}>{lead.status}</span></td>
+                      <td className="table-td" style={{ fontSize: 12, color: '#94A3B8' }}>{timeAgo(lead.createdAt)}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
             </div>
           </div>
         )}
 
+        {/* ─── VISITOR TRACKER ─── */}
+        {activeTab === 'visitors' && (
+          <div className="fadein">
+            <div style={{ marginBottom: 24 }}><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Visitor Tracker</h1><p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Every device that lands on your page. {kpis.onlineNow} online now.</p></div>
+            <div className="card">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {visitorData.map(visitor => {
+                  const isOnline = (Date.now() - visitor.lastSeen) < 3 * 60 * 1000;
+                  return (
+                    <div key={visitor.id} style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+                      <div onClick={() => setSelectedVisitor(selectedVisitor === visitor.id ? null : visitor.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F8FAFC', cursor: 'pointer', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                          <span style={{ width: 40, height: 40, borderRadius: '50%', background: isOnline ? 'rgba(34,197,94,.12)' : 'rgba(232,115,15,0.1)', color: isOnline ? '#16a34a' : '#E8730F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}><i className={`fas ${isOnline ? 'fa-signal' : 'fa-user-secret'}`}></i></span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontFamily: 'monospace', fontSize: 12.5, fontWeight: 700, color: '#0A1F12', display: 'flex', alignItems: 'center', gap: 8 }}>{visitor.id} {isOnline && <span style={{ fontSize: 9, fontWeight: 800, color: '#0F5C2A', background: 'rgba(34,197,94,.12)', padding: '2px 6px', borderRadius: 4 }}>ONLINE</span>}</div>
+                            <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>{visitor.device?.browser || '—'} · {visitor.device?.device || '—'} · {visitor.events.length} actions · {timeAgo(visitor.lastSeen)}</div>
+                          </div>
+                        </div><i className={`fas fa-chevron-${selectedVisitor === visitor.id ? 'up' : 'down'}`} style={{ color: '#94A3B8' }}></i>
+                      </div>
+                      {selectedVisitor === visitor.id && (
+                        <div style={{ padding: 20, background: '#fff', borderTop: '1px solid #E2E8F0' }}>
+                          {visitor.events.map((e, i) => (
+                            <div key={e.id} style={{ display: 'flex', gap: 14, paddingBottom: 12 }}>
+                              <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#E8730F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0 }}><i className="fas fa-check"></i></div>
+                              <div><div style={{ fontSize: 12.5, fontWeight: 700, color: '#0A1F12' }}>{e.action.replace(/_/g, ' ').toUpperCase()}</div><div style={{ fontSize: 10.5, color: '#94A3B8' }}>{new Date(e.createdAt?.toMillis?.() || e.createdAt).toLocaleString()}</div></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── SETTINGS ─── */}
+        {activeTab === 'settings' && (
+          <div className="fadein">
+            <div style={{ marginBottom: 24 }}><h1 className="serif" style={{ fontSize: 28, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Settings</h1></div>
+            <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+              <div className="card"><h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Notifications</h3><p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Sound alerts when a new lead arrives.</p><button onClick={() => setSoundOn(!soundOn)} className={`btn ${soundOn ? 'btn-primary' : 'btn-outline'}`}><i className={`fas ${soundOn ? 'fa-volume-up' : 'fa-volume-mute'}`}></i> Sound is {soundOn ? 'ON' : 'OFF'}</button></div>
+              <div className="card"><h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Data Export</h3><p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Download all leads as CSV.</p><button onClick={() => exportLeadsCSV(leads)} className="btn btn-outline"><i className="fas fa-download"></i> Export {leads.length} leads</button></div>
+              <div className="card"><h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Demo Data</h3><p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px' }}>Populate portal with sample leads.</p><button onClick={seedDemo} disabled={seeding} className="btn btn-primary"><i className={`fas ${seeding ? 'fa-spinner fa-spin' : 'fa-flask'}`}></i> {seeding ? 'Seeding…' : 'Seed demo data'}</button></div>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Lead Drawer Overlay */}
-      {selectedLead && (
-        <LeadDrawer 
-          lead={selectedLead} 
-          onClose={() => setSelectedLead(null)} 
-          onUpdate={updateLead} 
-        />
-      )}
+      {/* Overlays */}
+      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={updateLead} />}
     </div>
   );
 }
@@ -736,10 +1014,8 @@ function App() {
     const unsub = auth.onAuthStateChanged(async (u) => {
       if (!u) { setUser(null); setIsAdmin(false); setCheckingAuth(false); return; }
       setUser(u);
-      try {
-        const snap = await db.collection('se_admins').doc(u.uid).get();
-        setIsAdmin(snap.exists);
-      } catch (err) { setIsAdmin(false); }
+      try { const snap = await db.collection('se_admins').doc(u.uid).get(); setIsAdmin(snap.exists); } 
+      catch (err) { setIsAdmin(false); } 
       finally { setCheckingAuth(false); }
     });
     return () => unsub();
