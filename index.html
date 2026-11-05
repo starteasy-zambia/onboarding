@@ -564,8 +564,8 @@ function OnboardingForm({ onAdminClick }) {
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: '60px 24px' }}>
-        <div className="fadein" style={{ textAlign: 'center', marginBottom: 40 }}>
+      <main style={{ flex: 1, padding: '60px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="fadein" style={{ textAlign: 'center', marginBottom: 40, width: '100%', maxWidth: 680 }}>
           <h1 className="serif" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', color: 'var(--forest)', marginBottom: 16, lineHeight: 1.1 }}>
             Welcome to <span style={{ color: 'var(--orange)' }}>StartEasy Zambia</span>
           </h1>
@@ -580,7 +580,7 @@ function OnboardingForm({ onAdminClick }) {
           )}
         </div>
 
-        <div className="form-card fadein">
+        <div className="form-card fadein" style={{ width: '100%' }}>
           {error && <div className="error-msg"><i className="fas fa-exclamation-circle"></i> {error}</div>}
           {success && <div className="success-msg"><i className="fas fa-check-circle"></i> Data saved! Opening WhatsApp...</div>}
 
@@ -631,35 +631,62 @@ function OnboardingForm({ onAdminClick }) {
           </form>
         </div>
 
-        {/* NEW CTA SECTION ADDED HERE */}
-        <div className="fadein" style={{ textAlign: 'center', marginTop: 48, paddingBottom: 24 }}>
-          <p style={{ fontSize: 15, color: 'rgba(10,31,18,.7)', marginBottom: 12, fontWeight: 500 }}>
-            Want to explore our full range of business services?
-          </p>
+        {/* SMART CTA SECTION WITH HIDDEN URL */}
+        <div className="fadein" style={{ width: '100%', maxWidth: 680, marginTop: 40, paddingBottom: 20 }}>
           <a 
             href="https://www.starteasyzambia.com" 
             target="_blank" 
             rel="noopener noreferrer"
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: 8, 
-              fontSize: 17, 
-              fontWeight: 800, 
-              color: 'var(--orange)', 
-              textDecoration: 'none', 
-              borderBottom: '2px solid var(--orange)', 
-              paddingBottom: 4,
-              transition: 'all .2s'
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #0A1F12, #123A1F)',
+              borderRadius: '16px',
+              textDecoration: 'none',
+              boxShadow: '0 10px 30px rgba(10,31,18,0.15)',
+              transition: 'all 0.3s ease',
+              border: '1px solid rgba(245,166,35,0.2)',
+              flexWrap: 'wrap',
+              gap: '16px',
+              cursor: 'pointer'
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--orange-2)'; e.currentTarget.style.borderBottomColor = 'var(--orange-2)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--orange)'; e.currentTarget.style.borderBottomColor = 'var(--orange)'; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = '0 15px 40px rgba(10,31,18,0.25)';
+              e.currentTarget.style.borderColor = 'rgba(245,166,35,0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(10,31,18,0.15)';
+              e.currentTarget.style.borderColor = 'rgba(245,166,35,0.2)';
+            }}
           >
-            Explore StartEasy Zambia <i className="fas fa-arrow-right" style={{ fontSize: 14 }}></i>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1 1 250px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#F5A623', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                StartEasy Zambia
+              </span>
+              <span style={{ fontSize: '16px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>
+                Want to explore our full range of business services?
+              </span>
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 20px',
+              background: 'linear-gradient(135deg, #E8730F, #F5A623)',
+              color: '#fff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(232,115,15,0.3)'
+            }}>
+              Explore Platform <i className="fas fa-arrow-right"></i>
+            </div>
           </a>
-          <p style={{ fontSize: 13, color: 'rgba(10,31,18,.4)', marginTop: 12, letterSpacing: '0.05em' }}>
-            www.starteasyzambia.com
-          </p>
         </div>
 
       </main>
