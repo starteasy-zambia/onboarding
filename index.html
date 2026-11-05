@@ -13,7 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-<!-- ═══ StartEasy Unified Visitor Tracker — paste in <head> of EVERY platform ═══ -->
+<!-- ═══ StartEasy Unified Visitor Tracker ═══ -->
 <script data-platform="onboarding" data-platform-label="Onboarding & Leads">
 (function(){'use strict';
 var CFG={firebase:{apiKey:"AIzaSyDdEyxvsd2RjgKVYTGYJfYUB_637lV3n5I",authDomain:"starteasy-zambia.firebaseapp.com",projectId:"starteasy-zambia",storageBucket:"starteasy-zambia.firebasestorage.app",messagingSenderId:"54136399237",appId:"1:54136399237:web:2f9f2d7f86bfdfb4be50ec"},cookieDomain:'.starteasyzambia.com',heartbeatMs:45000,scrollStep:25};
@@ -125,7 +125,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .btn-wa { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 18px; background: #25D366; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s; box-shadow: 0 10px 26px rgba(37,211,102,.3); margin-top: 12px; }
 .btn-wa:hover { background: #20ba59; transform: translateY(-2px); box-shadow: 0 16px 34px rgba(37,211,102,.45); }
 .btn-wa:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
-.error-msg { background: rgba(184,86,79,.08); border: 1px solid rgba(184,86,79,.3); color: #7C2318; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.error-msg { background: rgba(184,86,79,.08); border: 1px solid rgba(184,86,79,.3); color: #7C2318; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; word-break: break-word; }
 .success-msg { background: rgba(30,123,60,.08); border: 1px solid rgba(30,123,60,.3); color: #0F5C2A; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
 /* Admin */
@@ -193,8 +193,11 @@ const firebaseConfig = {
   messagingSenderId: "54136399237",
   appId: "1:54136399237:web:2f9f2d7f86bfdfb4be50ec"
 };
-// Tracker in <head> already initialized Firebase — this guard prevents double-init
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
+// Prevent double init since the tracker already ran
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 const auth = firebase.auth();
 if(auth) auth.signInAnonymously().catch(e=>console.warn("Anon auth:", e));
@@ -202,7 +205,7 @@ if(auth) auth.signInAnonymously().catch(e=>console.warn("Anon auth:", e));
 const WHATSAPP_NUMBER = '260762499581';
 const ADMIN_PASSCODE = 'starteasy2024';
 
-/* ─── VISITOR TRACKING (routes through unified SE tracker) ─── */
+/* ─── VISITOR TRACKING ─── */
 function getVisitorId() {
   try {
     let vid = localStorage.getItem('se_visitor_id');
@@ -251,17 +254,11 @@ const DEVICE_INFO = (() => {
   };
 })();
 
-/**
- * Track event — routes through the unified SE tracker so it appears
- * in the cross-platform dashboard with platform="onboarding".
- * Falls back to direct Firestore write if the SE tracker failed to load.
- */
 async function trackEvent(action, details = {}) {
   if (window.SE && typeof window.SE.track === 'function') {
     window.SE.track(action, details);
     return;
   }
-  // Fallback (should not normally run)
   try {
     await db.collection('se_events').add({
       visitorId: getVisitorId(),
@@ -274,7 +271,7 @@ async function trackEvent(action, details = {}) {
       url: location.href,
       path: location.pathname,
       title: document.title,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: Date.now()
     });
   } catch(e) { console.warn("Tracking failed", e); }
 }
@@ -335,7 +332,7 @@ function exportLeadsCSV(leads) {
   const headers = ['Name','Email','Business','Intent','Service','Status','Details','Created'];
   const rows = leads.map(l => [
     l.name||'', l.email||'', l.business||'', l.intent||'', l.service||'',
-    l.status||'', l.details||'', l.createdAt ? new Date(l.createdAt.toDate()).toISOString() : ''
+    l.status||'', l.details||'', l.createdAt ? (l.createdAt.toDate ? new Date(l.createdAt.toDate()).toISOString() : new Date(l.createdAt).toISOString()) : ''
   ]);
   const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -346,7 +343,6 @@ function exportLeadsCSV(leads) {
   URL.revokeObjectURL(url);
 }
 
-/* ─── ANIMATED KPI ─── */
 function KpiCard({ label, val, icon, color, sub }) {
   const animated = useCountUp(val);
   return (
@@ -379,8 +375,6 @@ function OnboardingForm({ onAdminClick }) {
   const [recentCount, setRecentCount] = useState(null);
   const focusedRef = useRef(new Set());
 
-  // NOTE: page_view, heartbeat, scroll_depth are handled by the global SE tracker.
-  // This effect only tracks session_end and updates the live social-proof counter.
   useEffect(() => {
     const start = Date.now();
     const leave = () => {
@@ -388,12 +382,15 @@ function OnboardingForm({ onAdminClick }) {
       if (secs > 3) trackEvent('session_end', { duration_secs: secs });
     };
     window.addEventListener('beforeunload', leave);
-    // Live social proof — people who joined this week
     const unsub = db.collection('se_leads').orderBy('createdAt','desc').limit(20)
       .onSnapshot(snap => {
         const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
         let n = 0;
-        snap.forEach(d => { const t = d.data().createdAt?.toMillis?.(); if (t && t > cutoff) n++; });
+        snap.forEach(d => {
+          const data = d.data();
+          const ts = data.createdAt?.toMillis ? data.createdAt.toMillis() : (typeof data.createdAt === 'number' ? data.createdAt : 0);
+          if (ts > cutoff) n++;
+        });
         setRecentCount(n);
       }, () => {});
     return () => { window.removeEventListener('beforeunload', leave); unsub(); };
@@ -429,39 +426,49 @@ function OnboardingForm({ onAdminClick }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setSuccess(false);
+    
+    // Validation
     if (!intent) return setError("Please select what brings you to StartEasy.");
     if (!q2Answer) return setError("Please answer the second question.");
     if (!fullName.trim()) return setError("Please enter your full name.");
     if (!email.trim() || !email.includes('@')) return setError("Please enter a valid email address.");
 
     setSubmitting(true);
+    
     try {
+      // 1. Save to Firestore
       await db.collection('se_leads').add({
-        name: fullName, email, intent, service: q2Answer,
-        business: businessName || '-', details: details || '',
+        name: fullName, 
+        email: email, 
+        intent: intent, 
+        service: q2Answer,
+        business: businessName || '-', 
+        details: details || '',
         status: 'New lead',
-        visitorId: getVisitorId(), sessionId: getSessionId(),
+        visitorId: getVisitorId(), 
+        sessionId: getSessionId(),
         device: DEVICE_INFO,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: Date.now()
       });
+
+      // 2. Log Activity 
       await trackEvent('form_submitted', { name: fullName, service: q2Answer });
 
-      // ── Unified cross-platform identity ──
-      // Tags this visitor as an identified lead across every StartEasy platform
-      // so the unified dashboard can follow their journey everywhere.
+      // 3. Tag Visitor for Cross-Platform tracking
       if (window.SE && typeof window.SE.identify === 'function') {
         window.SE.identify({
-          email,
+          email: email,
           name: fullName,
           role: 'lead',
-          intent,
+          intent: intent,
           service: q2Answer,
           business: businessName || null
         });
       }
 
+      // 4. Success & Open WhatsApp
       setSuccess(true);
-
+      
       const message = `*STARTEASY ONBOARDING*%0A%0A` +
         `*Name:* ${fullName}%0A` +
         `*Email:* ${email}%0A%0A` +
@@ -472,19 +479,24 @@ function OnboardingForm({ onAdminClick }) {
 
       setTimeout(() => {
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+        // Reset form
         setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setBusinessName(''); setDetails('');
-        setSuccess(false); setSubmitting(false);
-      }, 1400);
+        setSuccess(false);
+        setSubmitting(false);
+      }, 1500);
+
     } catch (err) {
-      console.error(err);
-      setError("Failed to submit. Please try again.");
+      console.error("Submission Error:", err);
+      // Show the exact error so we know what happened
+      setError(`Failed to submit. Error: ${err.message || err.code || 'Unknown issue'}`);
       setSubmitting(false);
     }
   };
 
   const renderQ2 = () => {
     if (!intent) return null;
-    let label = "", placeholder = "", isSelect = false;
+    let label = ""; let placeholder = ""; let isSelect = false;
+
     switch (intent) {
       case "I need business or administrative services":
       case "I am an entrepreneur or business owner":
@@ -499,6 +511,7 @@ function OnboardingForm({ onAdminClick }) {
         label = "What are you looking to explore?"; placeholder = "e.g. Just browsing, seeing what you offer..."; break;
       default: label = "Please provide more details";
     }
+
     return (
       <div className="fadein" style={{ marginBottom: 32 }}>
         <label className="form-label">2. {label} <span style={{ color: 'var(--red)' }}>*</span></label>
@@ -654,14 +667,12 @@ function AdminPortal({ onExit }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [seeding, setSeeding] = useState(false);
 
-  // Live ticker
   const [, forceTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => forceTick(n => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Firestore live subscriptions
   const dataLoadedRef = useRef(false);
   const toastedRef = useRef(new Set());
   useEffect(() => {
@@ -681,11 +692,10 @@ function AdminPortal({ onExit }) {
     return () => { unsubLeads(); unsubEvents(); };
   }, []);
 
-  // New-lead toasts + sound
   useEffect(() => {
     if (!dataLoadedRef.current || leads.length === 0) return;
     const newest = leads[0];
-    const ts = newest.createdAt?.toMillis?.() || 0;
+    const ts = newest.createdAt?.toMillis?.() || newest.createdAt || 0;
     const isFresh = ts > Date.now() - 10000;
     if (isFresh && !toastedRef.current.has(newest.id)) {
       toastedRef.current.add(newest.id);
@@ -706,22 +716,26 @@ function AdminPortal({ onExit }) {
     } catch (err) { console.error(err); alert("Failed to update status."); }
   };
 
-  // ─── KPI CALCULATIONS ───
   const kpis = useMemo(() => {
     const totalLeads = leads.length;
     const qualified = leads.filter(l => ['Discussion underway','Quotation sent','Converted to customer'].includes(l.status)).length;
     const followups = leads.filter(l => ['New lead','Follow up','Contacted'].includes(l.status)).length;
     const converted = leads.filter(l => l.status === 'Converted to customer').length;
     const weekCutoff = Date.now() - 7 * 24 * 3600 * 1000;
-    const thisWeek = leads.filter(l => (l.createdAt?.toMillis?.() || 0) > weekCutoff).length;
+    const thisWeek = leads.filter(l => {
+      const ts = l.createdAt?.toMillis?.() || l.createdAt || 0;
+      return ts > weekCutoff;
+    }).length;
     const uniqueVisitors = new Set(events.map(e => e.visitorId).filter(Boolean)).size;
     const cutoff = Date.now() - 3 * 60 * 1000;
     const online = new Set();
-    events.forEach(e => { const ts = e.createdAt?.toMillis?.() || 0; if (ts > cutoff && e.visitorId) online.add(e.visitorId); });
+    events.forEach(e => { 
+      const ts = e.createdAt?.toMillis?.() || e.createdAt || 0; 
+      if (ts > cutoff && e.visitorId) online.add(e.visitorId); 
+    });
     return { totalLeads, qualified, followups, converted, thisWeek, uniqueVisitors, onlineNow: online.size };
   }, [leads, events]);
 
-  // Lead scoring
   const scoreFor = (lead) => {
     let s = 10;
     if (/entrepreneur|business owner/i.test(lead.intent || '')) s += 20;
@@ -735,7 +749,6 @@ function AdminPortal({ onExit }) {
   const scoreClass = (s) => s >= 60 ? 'score-hot' : s >= 35 ? 'score-warm' : 'score-cold';
   const scoreLabel = (s) => s >= 60 ? 'HOT' : s >= 35 ? 'WARM' : 'COOL';
 
-  // Filtered leads
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
       if (statusFilter !== 'all') {
@@ -754,7 +767,6 @@ function AdminPortal({ onExit }) {
     });
   }, [leads, search, statusFilter]);
 
-  // Visitor grouping
   const visitorData = useMemo(() => {
     const byVisitor = {};
     events.forEach(e => {
@@ -768,24 +780,22 @@ function AdminPortal({ onExit }) {
       if (e.platform) byVisitor[e.visitorId].platforms.add(e.platform);
     });
     Object.values(byVisitor).forEach(v => {
-      v.events.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-      v.firstSeen = v.events[v.events.length - 1]?.createdAt?.toMillis?.() || Date.now();
-      v.lastSeen = v.events[0]?.createdAt?.toMillis?.() || Date.now();
+      v.events.sort((a, b) => (b.createdAt?.toMillis?.() || b.createdAt || 0) - (a.createdAt?.toMillis?.() || a.createdAt || 0));
+      v.firstSeen = v.events[v.events.length - 1]?.createdAt?.toMillis?.() || v.events[v.events.length - 1]?.createdAt || Date.now();
+      v.lastSeen = v.events[0]?.createdAt?.toMillis?.() || v.events[0]?.createdAt || Date.now();
       v.sessionCount = v.sessions.size;
       v.platformList = Array.from(v.platforms);
     });
     return Object.values(byVisitor).sort((a, b) => b.lastSeen - a.lastSeen);
   }, [events]);
 
-  // Live activity feed
   const liveFeed = useMemo(() => events.slice(0, 12), [events]);
 
-  // Sparkline buckets (last 60 min, 20 buckets)
   const sparkline = useMemo(() => {
     const now = Date.now();
     const buckets = Array(20).fill(0);
     events.forEach(e => {
-      const ts = e.createdAt?.toMillis?.() || 0;
+      const ts = e.createdAt?.toMillis?.() || e.createdAt || 0;
       const mins = (now - ts) / 60000;
       if (mins >= 0 && mins < 60) {
         const idx = 19 - Math.floor(mins / 3);
@@ -796,7 +806,6 @@ function AdminPortal({ onExit }) {
   }, [events]);
   const sparkMax = Math.max(1, ...sparkline);
 
-  // Funnel
   const funnel = useMemo(() => {
     const visitors = kpis.uniqueVisitors;
     const engaged = new Set(events.filter(e => e.action === 'intent_selected').map(e => e.visitorId)).size;
@@ -814,7 +823,6 @@ function AdminPortal({ onExit }) {
     ];
   }, [events, leads, kpis.uniqueVisitors]);
 
-  // Demo seeding
   const seedDemo = async () => {
     if (!confirm("This will add 6 demo leads and ~20 demo events with [DEMO] tags. Continue?")) return;
     setSeeding(true);
@@ -833,7 +841,7 @@ function AdminPortal({ onExit }) {
           visitorId: 'v_demo_' + i,
           sessionId: 's_demo_' + i,
           device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: Date.now()
         });
       }
       const actions = ['page_view','intent_selected','field_focus','field_focus','form_submitted'];
@@ -847,7 +855,7 @@ function AdminPortal({ onExit }) {
             action: actions[a],
             details: a === 1 ? { intent: demos[v].intent } : a === 2 ? { field: 'name' } : {},
             device: { browser: 'Chrome', os: 'Windows', device: 'Desktop', screen: '1920×1080', language: 'en', timezone: 'Africa/Lusaka', referrer: 'direct' },
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: Date.now()
           });
         }
       }
@@ -873,7 +881,6 @@ function AdminPortal({ onExit }) {
 
   return (
     <div className="admin-layout fadein">
-      {/* Toasts */}
       <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 340 }}>
         {toasts.map(t => (
           <div key={t.id} className={t.exiting ? 'toast-exit' : 'toast'} style={{
@@ -931,7 +938,6 @@ function AdminPortal({ onExit }) {
       </aside>
 
       <main className="admin-content">
-        {/* Live top bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(34,197,94,.1)', color: '#0F5C2A', padding: '6px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em' }}>
@@ -968,7 +974,6 @@ function AdminPortal({ onExit }) {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 20, marginBottom: 24 }}>
-                {/* Sparkline */}
                 <div className="card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
@@ -987,7 +992,6 @@ function AdminPortal({ onExit }) {
                   </svg>
                 </div>
 
-                {/* Live activity feed */}
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <div style={{ padding: '18px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span className="live-dot"></span>
@@ -1015,7 +1019,6 @@ function AdminPortal({ onExit }) {
                 </div>
               </div>
 
-              {/* Funnel */}
               <div className="card" style={{ marginBottom: 24 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>Conversion Funnel</h3>
                 <p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 20px' }}>Every stage updates live.</p>
@@ -1041,7 +1044,6 @@ function AdminPortal({ onExit }) {
                 })}
               </div>
 
-              {/* Recent leads */}
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0A1F12', margin: 0 }}>Recent Leads</h3>
@@ -1268,7 +1270,7 @@ function AdminPortal({ onExit }) {
                                       </div>
                                     )}
                                     <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 2 }}>
-                                      {e.createdAt ? new Date(e.createdAt.toDate()).toLocaleString() : 'Just now'}
+                                      {e.createdAt ? (e.createdAt.toDate ? new Date(e.createdAt.toDate()).toLocaleString() : new Date(e.createdAt).toLocaleString()) : 'Just now'}
                                       {' · '}
                                       session {e.sessionId?.slice(-6) || '—'}
                                     </div>
