@@ -1860,7 +1860,7 @@ function CreateLeadModal({ onClose, onSave }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   SERVICE ORDER MODAL
+   SERVICE ORDER MODAL (UPDATED)
    ═══════════════════════════════════════════════════════════════════ */
 function CreateOrderModal({ onClose, onSave, leads }) {
   const [form, setForm] = useState({
@@ -1873,11 +1873,15 @@ function CreateOrderModal({ onClose, onSave, leads }) {
   
   const handleLeadSelect = (e) => {
     const id = e.target.value;
-    const selected = leads.find(l => l.id === id);
-    if (selected) {
-      setForm({ ...form, leadId: id, customerName: selected.name, serviceName: selected.service || 'Custom Service', amount: selected.quotedAmount || '' });
+    if (id === 'manual') {
+      setForm({ ...form, leadId: 'manual', customerName: '', serviceName: 'Custom Service', amount: '' });
     } else {
-      setForm({ ...form, leadId: '', customerName: '', serviceName: 'Financial Support & Management', amount: '' });
+      const selected = leads.find(l => l.id === id);
+      if (selected) {
+        setForm({ ...form, leadId: id, customerName: selected.name, serviceName: selected.service || 'Custom Service', amount: selected.quotedAmount || '' });
+      } else {
+        setForm({ ...form, leadId: '', customerName: '', serviceName: 'Financial Support & Management', amount: '' });
+      }
     }
   };
 
@@ -1888,24 +1892,35 @@ function CreateOrderModal({ onClose, onSave, leads }) {
   
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card fadein" style={{ width: '100%', maxWidth: 450 }}>
+      <div className="card fadein" style={{ width: '100%', maxWidth: 450, maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 className="serif" style={{ fontSize: 22, marginBottom: 16 }}>Create Service Order</h2>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 12 }}>
-            <label className="form-label">Select Customer (from Converted Leads)</label>
+            <label className="form-label">Select Customer</label>
             <select className="form-select" value={form.leadId} onChange={handleLeadSelect} required>
               <option value="">-- Choose Customer --</option>
-              {leads.filter(l => l.status === 'Converted to customer').map(l => <option key={l.id} value={l.id}>{l.name} - {l.business}</option>)}
+              <option value="manual" style={{ fontWeight: 800, color: 'var(--orange)' }}>+ Manual Entry (Walk-in)</option>
+              {leads.map(l => <option key={l.id} value={l.id}>{l.name} - {l.business} [{l.status}]</option>)}
             </select>
           </div>
+          
+          {form.leadId === 'manual' && (
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label">Customer Name</label>
+              <input type="text" className="form-input" value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} required placeholder="Enter full name" />
+            </div>
+          )}
+
           <div style={{ marginBottom: 12 }}>
             <label className="form-label">Service</label>
             <input type="text" className="form-input" value={form.serviceName} onChange={e => setForm({ ...form, serviceName: e.target.value })} required />
           </div>
+          
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
             <div><label className="form-label">Amount (K)</label><input type="number" className="form-input" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required /></div>
             <div><label className="form-label">Status</label><select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option>Pending</option><option>Paid</option><option>Delivered</option></select></div>
           </div>
+          
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create Order</button>
             <button type="button" onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
@@ -1917,7 +1932,7 @@ function CreateOrderModal({ onClose, onSave, leads }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CREATE SUPPORT TICKET MODAL
+   CREATE SUPPORT TICKET MODAL (UPDATED)
    ═══════════════════════════════════════════════════════════════════ */
 function CreateTicketModal({ onClose, onSave, leads }) {
   const [form, setForm] = useState({
@@ -1929,8 +1944,12 @@ function CreateTicketModal({ onClose, onSave, leads }) {
   
   const handleLeadSelect = (e) => {
     const id = e.target.value;
-    const selected = leads.find(l => l.id === id);
-    setForm({ ...form, leadId: id, customerName: selected ? selected.name : '' });
+    if (id === 'manual') {
+      setForm({ ...form, leadId: 'manual', customerName: '' });
+    } else {
+      const selected = leads.find(l => l.id === id);
+      setForm({ ...form, leadId: id, customerName: selected ? selected.name : '' });
+    }
   };
 
   const submit = (e) => {
@@ -1940,20 +1959,30 @@ function CreateTicketModal({ onClose, onSave, leads }) {
   
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card fadein" style={{ width: '100%', maxWidth: 450 }}>
+      <div className="card fadein" style={{ width: '100%', maxWidth: 450, maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 className="serif" style={{ fontSize: 22, marginBottom: 16 }}>New Support Ticket</h2>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 12 }}>
-            <label className="form-label">Customer</label>
+            <label className="form-label">Select Customer</label>
             <select className="form-select" value={form.leadId} onChange={handleLeadSelect} required>
               <option value="">-- Choose Customer --</option>
-              {leads.filter(l => l.status === 'Converted to customer').map(l => <option key={l.id} value={l.id}>{l.name} - {l.business}</option>)}
+              <option value="manual" style={{ fontWeight: 800, color: 'var(--orange)' }}>+ Manual Entry (Walk-in)</option>
+              {leads.map(l => <option key={l.id} value={l.id}>{l.name} - {l.business} [{l.status}]</option>)}
             </select>
           </div>
+
+          {form.leadId === 'manual' && (
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label">Customer Name</label>
+              <input type="text" className="form-input" value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} required placeholder="Enter full name" />
+            </div>
+          )}
+
           <div style={{ marginBottom: 12 }}>
             <label className="form-label">Issue Subject</label>
             <input type="text" className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} required placeholder="e.g. Cannot access billing portal" />
           </div>
+          
           <div style={{ marginBottom: 20 }}>
             <label className="form-label">Priority</label>
             <select className="form-select" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
@@ -1963,6 +1992,7 @@ function CreateTicketModal({ onClose, onSave, leads }) {
               <option>Critical</option>
             </select>
           </div>
+          
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Log Ticket</button>
             <button type="button" onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
