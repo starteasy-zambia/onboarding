@@ -39,7 +39,7 @@ var PLATFORM=(st&&st.getAttribute('data-platform'))||'main';
 var PLABEL=(st&&st.getAttribute('data-platform-label'))||PLATFORM;
 
 var db=null,ready=false;
-function initFB(){if(ready)return true;if(typeof firebase==='undefined')return false;if(!firebase.apps.length){try{firebase.initializeApp(CFG.firebase);}catch(e){return false;}}try{db=firebase.firestore();firebase.auth().signInAnonymously().catch(function(){});ready=true;return true;}catch(e){return false;}}
+function initFB(){if(ready)return true;if(typeof firebase==='undefined')return false;if(!firebase.apps.length){try{firebase.initializeApp(CFG.firebase);}catch(e){return false;}}try{db=firebase.firestore();ready=true;return true;}catch(e){return false;}}
 
 var ua=parseUA(navigator.userAgent);
 var DEV={browser:ua.browser,os:ua.os,device:ua.device,screen:window.screen.width+'×'+window.screen.height,viewport:window.innerWidth+'×'+window.innerHeight,language:navigator.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,referrer:document.referrer||'direct'};
@@ -86,7 +86,6 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 .fadein { animation: fi .4s ease both; }
 @keyframes fi { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* Live indicators */
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; position: relative; }
 .live-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; background: rgba(34,197,94,.4); animation: pulse-ring 1.8s ease-out infinite; }
 @keyframes pulse-ring { 0% { transform: scale(.7); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
@@ -95,9 +94,6 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-
 @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
 .toast { animation: slideIn .35s cubic-bezier(.2,.8,.2,1); }
 .toast-exit { animation: slideOut .3s ease forwards; }
-
-@keyframes flashIn { from { background: rgba(245,166,35,.25); } to { background: transparent; } }
-.flash-new { animation: flashIn 2s ease; }
 
 /* Public onboarding */
 .site-header { background: rgba(10,31,18,0.98); border-bottom: 1px solid rgba(245,166,35,.1); width: 100%; height: 72px; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
@@ -193,17 +189,11 @@ const firebaseConfig = {
   messagingSenderId: "54136399237",
   appId: "1:54136399237:web:2f9f2d7f86bfdfb4be50ec"
 };
-
-// Prevent double init since the tracker already ran
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
-if(auth) auth.signInAnonymously().catch(e=>console.warn("Anon auth:", e));
 
 const WHATSAPP_NUMBER = '260762499581';
-const ADMIN_PASSCODE = 'starteasy2024';
 
 /* ─── VISITOR TRACKING ─── */
 function getVisitorId() {
@@ -427,7 +417,6 @@ function OnboardingForm({ onAdminClick }) {
     e.preventDefault();
     setError(''); setSuccess(false);
     
-    // Validation
     if (!intent) return setError("Please select what brings you to StartEasy.");
     if (!q2Answer) return setError("Please answer the second question.");
     if (!fullName.trim()) return setError("Please enter your full name.");
@@ -436,37 +425,22 @@ function OnboardingForm({ onAdminClick }) {
     setSubmitting(true);
     
     try {
-      // 1. Save to Firestore
       await db.collection('se_leads').add({
-        name: fullName, 
-        email: email, 
-        intent: intent, 
-        service: q2Answer,
-        business: businessName || '-', 
-        details: details || '',
-        status: 'New lead',
-        visitorId: getVisitorId(), 
-        sessionId: getSessionId(),
-        device: DEVICE_INFO,
+        name: fullName, email: email, intent: intent, service: q2Answer,
+        business: businessName || '-', details: details || '', status: 'New lead',
+        visitorId: getVisitorId(), sessionId: getSessionId(), device: DEVICE_INFO,
         createdAt: Date.now()
       });
 
-      // 2. Log Activity 
       await trackEvent('form_submitted', { name: fullName, service: q2Answer });
 
-      // 3. Tag Visitor for Cross-Platform tracking
       if (window.SE && typeof window.SE.identify === 'function') {
         window.SE.identify({
-          email: email,
-          name: fullName,
-          role: 'lead',
-          intent: intent,
-          service: q2Answer,
-          business: businessName || null
+          email: email, name: fullName, role: 'lead',
+          intent: intent, service: q2Answer, business: businessName || null
         });
       }
 
-      // 4. Success & Open WhatsApp
       setSuccess(true);
       
       const message = `*STARTEASY ONBOARDING*%0A%0A` +
@@ -479,15 +453,12 @@ function OnboardingForm({ onAdminClick }) {
 
       setTimeout(() => {
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
-        // Reset form
         setIntent(''); setQ2Answer(''); setFullName(''); setEmail(''); setBusinessName(''); setDetails('');
-        setSuccess(false);
-        setSubmitting(false);
+        setSuccess(false); setSubmitting(false);
       }, 1500);
 
     } catch (err) {
       console.error("Submission Error:", err);
-      // Show the exact error so we know what happened
       setError(`Failed to submit. Error: ${err.message || err.code || 'Unknown issue'}`);
       setSubmitting(false);
     }
@@ -615,37 +586,68 @@ function OnboardingForm({ onAdminClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ADMIN LOGIN
+   SECURE ADMIN LOGIN (Firebase Auth)
    ═══════════════════════════════════════════════════════════════════ */
-function AdminLogin({ onUnlock, onExit }) {
-  const [pass, setPass] = useState('');
+function AdminLogin({ onExit }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
-  const submit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (pass === ADMIN_PASSCODE) {
-      localStorage.setItem('se_admin_auth', '1');
-      onUnlock();
-    } else {
-      setErr('Incorrect passcode'); setPass('');
+    setErr('');
+    setSubmitting(true);
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      // The App component will detect the auth state change and render AdminPortal
+    } catch (error) {
+      console.error(error);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        setErr('Invalid email or password.');
+      } else {
+        setErr(error.message);
+      }
+      setSubmitting(false);
     }
   };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', padding: 24 }}>
       <div className="card fadein" style={{ maxWidth: 400, width: '100%', padding: 36, textAlign: 'center' }}>
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#E8730F,#F5A623)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 20px' }}>
-          <i className="fas fa-lock"></i>
+          <i className="fas fa-shield-halved"></i>
         </div>
-        <h2 className="serif" style={{ fontSize: 22, fontWeight: 800, color: '#0A1F12', marginBottom: 8 }}>Admin Portal Access</h2>
-        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>Enter your passcode to unlock the intelligence dashboard.</p>
-        <form onSubmit={submit}>
+        <h2 className="serif" style={{ fontSize: 22, fontWeight: 800, color: '#0A1F12', marginBottom: 8 }}>Admin Access</h2>
+        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>Sign in with your StartEasy admin credentials.</p>
+        
+        <form onSubmit={handleLogin}>
           {err && <div className="error-msg" style={{ marginBottom: 16 }}><i className="fas fa-exclamation-circle"></i> {err}</div>}
-          <input type="password" className="form-input" placeholder="Passcode" value={pass} onChange={e => { setPass(e.target.value); setErr(''); }} autoFocus style={{ marginBottom: 12 }} />
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 12 }}>Unlock Portal</button>
+          
+          <input 
+            type="email" 
+            className="form-input" 
+            placeholder="admin@starteasyzambia.com" 
+            value={email} 
+            onChange={e => { setEmail(e.target.value); setErr(''); }} 
+            required 
+            style={{ marginBottom: 12 }} 
+          />
+          <input 
+            type="password" 
+            className="form-input" 
+            placeholder="Password" 
+            value={password} 
+            onChange={e => { setPassword(e.target.value); setErr(''); }} 
+            required 
+            style={{ marginBottom: 20 }} 
+          />
+          
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 14 }} disabled={submitting}>
+            {submitting ? <><i className="fas fa-spinner fa-spin"></i> Verifying...</> : 'Secure Login'}
+          </button>
           <button type="button" onClick={onExit} className="btn" style={{ width: '100%', marginTop: 8, padding: 12, background: 'transparent', color: '#64748B' }}>← Back to Form</button>
         </form>
-        <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 20 }}>
-          Demo passcode: <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: 4, color: '#475569' }}>{ADMIN_PASSCODE}</code>
-        </p>
       </div>
     </div>
   );
@@ -865,9 +867,13 @@ function AdminPortal({ onExit }) {
     } finally { setSeeding(false); }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('se_admin_auth');
-    onExit();
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      onExit();
+    } catch(e) {
+      console.error(e);
+    }
   };
 
   if (loading) {
@@ -932,7 +938,7 @@ function AdminPortal({ onExit }) {
 
         <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <button onClick={handleLogout} className="btn" style={{ width: '100%', fontSize: 12, padding: 10, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <i className="fas fa-sign-out-alt"></i> Logout
+            <i className="fas fa-sign-out-alt"></i> Secure Logout
           </button>
         </div>
       </aside>
@@ -1341,23 +1347,71 @@ function AdminPortal({ onExit }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MAIN APP
+   MAIN APP (Auth Gate)
    ═══════════════════════════════════════════════════════════════════ */
 function App() {
   const [view, setView] = useState('public');
-  const [adminAuthed, setAdminAuthed] = useState(() => {
-    try { return localStorage.getItem('se_admin_auth') === '1'; } catch(e) { return false; }
-  });
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    // Listen to Firebase Auth state
+    const unsub = auth.onAuthStateChanged(async (u) => {
+      if (!u) {
+        setUser(null);
+        setIsAdmin(false);
+        setCheckingAuth(false);
+        return;
+      }
+      
+      setUser(u);
+      
+      // Check if the logged-in user is an admin in Firestore
+      try {
+        const snap = await db.collection('se_admins').doc(u.uid).get();
+        if (snap.exists) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+          // If they are logged in but not an admin, sign them out
+          await auth.signOut();
+        }
+      } catch (err) {
+        console.error("Admin verification failed:", err);
+        setIsAdmin(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const goAdmin = () => setView('admin');
-  const exitAdmin = () => { setView('public'); };
+  const exitAdmin = () => { 
+    setView('public'); 
+    if(isAdmin) auth.signOut(); 
+  };
+
+  if (checkingAuth) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', flexDirection: 'column', gap: 16 }}>
+        <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: '#E8730F' }}></i>
+        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>Verifying secure session…</div>
+      </div>
+    );
+  }
 
   if (view === 'public') {
     return <OnboardingForm onAdminClick={goAdmin} />;
   }
-  if (!adminAuthed) {
-    return <AdminLogin onUnlock={() => setAdminAuthed(true)} onExit={exitAdmin} />;
+
+  // If they click "Admin Portal" but aren't logged in, show the login screen
+  if (!user || !isAdmin) {
+    return <AdminLogin onExit={exitAdmin} />;
   }
+
+  // If they are logged in and verified as an admin, show the portal
   return <AdminPortal onExit={exitAdmin} />;
 }
 
