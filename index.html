@@ -1241,8 +1241,6 @@ function computeNextQuoteNumber(quotations) {
       const m = String(q.quoteNumber || '').match(/^SEZ-QT-(\d+)$/i);
       if (!m) return null;
       const n = parseInt(m[1], 10);
-      // Only 1–999 are considered part of the new sequential series.
-      // Higher numbers are legacy Date.now()-derived and are ignored.
       return (n >= 1 && n <= 999) ? n : null;
     })
     .filter(n => n !== null);
@@ -1260,6 +1258,32 @@ function computePaymentSchedule(subtotalGov, netSEFee, total) {
   const dueNow = govFee + seUpfront;
   const dueOnCompletion = seCompletion;
   return { govFee, seFee, isSplit, seUpfront, seCompletion, dueNow, dueOnCompletion, total: Number(total) || 0 };
+}
+
+/* ─── DYNAMIC SCOPE HELPER ─── */
+function getServiceScopeDescriptions(items) {
+  return items.map(item => {
+    const name = item.desc.toLowerCase();
+    let details = "End-to-end administrative preparation, submission, and tracking.";
+    
+    if (name.includes('sourcing') || name.includes('procurement')) {
+       details = "Identification and verification of suppliers. Obtaining and comparing quotations. Negotiating terms and coordinating the procurement process.";
+    } else if (name.includes('registration') || name.includes('incorporation') || name.includes('pacra')) {
+       details = "Preparation of statutory documents. Submission to PACRA. Tracking application status and delivery of the final certificate.";
+    } else if (name.includes('tax') || name.includes('tpin') || name.includes('zra')) {
+       details = "Preparation of tax registration documents. Submission to ZRA. Follow-up and delivery of TPIN or Tax clearance certificates.";
+    } else if (name.includes('listing') || name.includes('directory')) {
+       details = "Creation and optimization of your supplier profile. Verification checks. Publishing of listings to the directory.";
+    } else if (name.includes('compliance') || name.includes('napsa') || name.includes('nhima') || name.includes('wcfcb')) {
+       details = "Review of current compliance status. Preparation of statutory returns. Facilitation of payments and regularization.";
+    } else if (name.includes('financial') || name.includes('bookkeeping') || name.includes('budget')) {
+       details = "Setup of financial records. Categorization of income and expenses. Preparation of monthly financial reports.";
+    } else if (name.includes('wizard') || name.includes('advisory') || name.includes('plan')) {
+       details = "Guided assessment. Generation of detailed reports. Presentation of findings and recommendations.";
+    }
+
+    return { title: item.desc, details };
+  });
 }
 
 /* ─── VISITOR TRACKING ─── */
@@ -2317,11 +2341,13 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
     }).from(element).save();
   };
 
-  /* ── Recompute schedule from stored totals (fallback to stored if present) ── */
+  /* ── Recompute schedule from stored totals ── */
   const schedule = useMemo(() => {
     const netSE = Math.max(0, Number(quote.subtotalSE || 0) - Number(quote.discountAmount || 0));
     return computePaymentSchedule(quote.subtotalGov || 0, netSE, quote.total || 0);
   }, [quote]);
+
+  const scopeDescriptions = useMemo(() => getServiceScopeDescriptions(quote.items), [quote.items]);
 
   const waMessage = `Hello ${quote.customerName},\n\nPlease find attached our quotation *${quote.quoteNumber}* for the grand total of *K${quote.total.toLocaleString()}*.\n\nLet us know if you have any questions.`;
   const waLink = quote.customerPhone ? `https://wa.me/${quote.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}` : null;
@@ -2376,14 +2402,14 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
               </tbody>
             </table>
 
-            {/* 1. Service Description - DYNAMIC */}
+            {/* 1. Service Description - 100% DYNAMIC */}
             <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>1. SERVICE DESCRIPTION</h3>
             <div style={{ background: '#F8FAFC', padding: 16, borderRadius: 8, marginBottom: 24, border: '1px solid #E2E8F0' }}>
               <p style={{ fontWeight: 800, margin: '0 0 8px' }}>
                 Package{quote.items.length > 1 ? 's' : ''}: {quote.items.map(i => i.desc).join(' + ')}
               </p>
               <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>
-                StartEasy Zambia will facilitate the administrative processes for the specific service(s) requested above, ensuring compliance with the applicable regulations and delivering the agreed outputs.
+                StartEasy Zambia will facilitate the specific administrative processes detailed in this quotation, ensuring compliance with the applicable regulations and delivering the agreed outputs.
               </p>
             </div>
 
@@ -2434,13 +2460,13 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
               </div>
             </div>
 
-            {/* 3. Scope of Services - DYNAMIC */}
+            {/* 3. Scope of Services - 100% DYNAMIC */}
             <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>3. SCOPE OF SERVICES</h3>
             <p style={{ fontSize: 12, margin: '0 0 8px' }}>The service includes administrative support for:</p>
             <ul style={{ fontSize: 12, paddingLeft: 20, margin: '0 0 24px', lineHeight: 1.6 }}>
-              {quote.items.map((item, i) => (
-                <li key={i} style={{ marginBottom: 4 }}>
-                  <strong>{item.desc}</strong> (Qty: {item.qty}) — Preparation, submission, and tracking as applicable.
+              {scopeDescriptions.map((s, i) => (
+                <li key={i} style={{ marginBottom: 8 }}>
+                  <strong style={{ color: '#0A1F12' }}>{s.title}</strong> — {s.details}
                 </li>
               ))}
               <li>Ongoing communication and progress updates.</li>
