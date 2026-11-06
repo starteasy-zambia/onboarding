@@ -977,6 +977,34 @@ body {
   font-weight: 800;
 }
 
+.policy-box {
+  background: linear-gradient(135deg, #FFF9E6, #FFFCF0);
+  border: 1px solid #F0E0A0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12.5px;
+  color: #5C4A1A;
+  line-height: 1.6;
+}
+
+.policy-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 6px 0;
+  align-items: baseline;
+  border-bottom: 1px dashed #E0D08A;
+}
+
+.policy-row:last-child {
+  border-bottom: none;
+  font-weight: 800;
+  color: #0A1F12;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1.5px solid #C9B87A;
+}
+
 @media (max-width: 1024px) {
   .admin-sidebar {
     transform: translateX(-100%);
@@ -1041,13 +1069,19 @@ const auth = firebase.auth();
 
 const WHATSAPP_NUMBER = '260762499581';
 
-/* ─── SERVICE CATALOGUE ───
-   Sourced from the live StartEasy platforms:
-   • Venture Building Service Platform (business plan, brand, EIZ/NCC, investor readiness)
-   • Financial Support & Management (starter/business control/growth packages)
-   • Suppliers Directory (listings, verification, sourcing support)
-   • Administrative Services Desk (PACRA, ZRA, NAPSA, NHIMA, WCFCB, licensing, sector regulators)
-*/
+/* ─── COMMERCIAL POLICIES ─── */
+const COMMERCIAL_POLICIES = {
+  smallServiceThreshold: 500,
+  depositPercent: 70,
+  completionPercent: 30,
+  smallServiceUpfrontPercent: 100,
+  govFeesUpfrontPercent: 100,
+  thirdPartyUpfrontPercent: 100,
+  quotationValidityDays: 7,
+  maxDiscountPercent: 10,
+};
+
+/* ─── SERVICE CATALOGUE ─── */
 const SERVICE_CATALOGUE = [
   {
     category: 'A. BUSINESS REGISTRATION & CORPORATE (PACRA)',
@@ -1200,6 +1234,34 @@ const QUOTE_STATUSES = [
   { id: 'Expired', label: 'Expired', color: 'status-not-interested' }
 ];
 
+/* ─── QUOTE NUMBER HELPER ─── */
+function computeNextQuoteNumber(quotations) {
+  const nums = (quotations || [])
+    .map(q => {
+      const m = String(q.quoteNumber || '').match(/^SEZ-QT-(\d+)$/i);
+      if (!m) return null;
+      const n = parseInt(m[1], 10);
+      // Only 1–999 are considered part of the new sequential series.
+      // Higher numbers are legacy Date.now()-derived and are ignored.
+      return (n >= 1 && n <= 999) ? n : null;
+    })
+    .filter(n => n !== null);
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'SEZ-QT-' + String(max + 1).padStart(3, '0');
+}
+
+/* ─── PAYMENT SCHEDULE HELPER ─── */
+function computePaymentSchedule(subtotalGov, netSEFee, total) {
+  const govFee = Math.max(0, Number(subtotalGov) || 0);
+  const seFee = Math.max(0, Number(netSEFee) || 0);
+  const isSplit = seFee > COMMERCIAL_POLICIES.smallServiceThreshold;
+  const seUpfront = isSplit ? seFee * (COMMERCIAL_POLICIES.depositPercent / 100) : seFee;
+  const seCompletion = isSplit ? seFee * (COMMERCIAL_POLICIES.completionPercent / 100) : 0;
+  const dueNow = govFee + seUpfront;
+  const dueOnCompletion = seCompletion;
+  return { govFee, seFee, isSplit, seUpfront, seCompletion, dueNow, dueOnCompletion, total: Number(total) || 0 };
+}
+
 /* ─── VISITOR TRACKING ─── */
 function getVisitorId() {
   try {
@@ -1286,6 +1348,9 @@ function fmtDate(ts) {
   if (!ts) return '—';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function fmtK(n) {
+  return 'K' + (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 function useCountUp(target) {
   const [val, setVal] = useState(0);
@@ -1979,9 +2044,15 @@ function CreateTicketModal({ onClose, onSave, leads }) {
 /* ═══════════════════════════════════════════════════════════════════
    CREATE / EDIT QUOTATION MODAL
    ═══════════════════════════════════════════════════════════════════ */
-function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
+function CreateQuotationModal({ onClose, onSave, leads, existingQuote, quotations }) {
   const isEdit = !!existingQuote;
-  
+
+  /* ── Sequential quote number (SEZ-QT-001, SEZ-QT-002, …) ── */
+  const nextQuoteNumber = useMemo(() => {
+    if (isEdit && existingQuote) return existingQuote.quoteNumber;
+    return computeNextQuoteNumber(quotations);
+  }, [quotations, isEdit, existingQuote]);
+
   const [customerId, setCustomerId] = useState(isEdit ? existingQuote.customerId : '');
   const [customerName, setCustomerName] = useState(isEdit ? existingQuote.customerName : '');
   const [customerEmail, setCustomerEmail] = useState(isEdit ? existingQuote.customerEmail : '');
@@ -1992,7 +2063,11 @@ function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
   const [items, setItems] = useState(isEdit ? existingQuote.items : [{ desc: '', govFee: 0, qty: 1, price: 0 }]);
   const [discountPercent, setDiscountPercent] = useState(isEdit ? existingQuote.discountPercent : 0);
   const [status, setStatus] = useState(isEdit ? existingQuote.status : 'Draft');
-  const [validUntil, setValidUntil] = useState(isEdit ? existingQuote.validUntil : new Date(Date.now() + 14 * 24 * 3600000).toISOString().split('T')[0]);
+  const [validUntil, setValidUntil] = useState(
+    isEdit
+      ? existingQuote.validUntil
+      : new Date(Date.now() + COMMERCIAL_POLICIES.quotationValidityDays * 24 * 3600000).toISOString().split('T')[0]
+  );
 
   const handleCustomerSelect = (e) => {
     const id = e.target.value;
@@ -2033,15 +2108,32 @@ function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
   const discountAmount = subtotalSE * (discountPercent / 100);
   const total = subtotal - discountAmount;
 
+  /* ── Live payment schedule preview ── */
+  const netSEFee = subtotalSE - discountAmount;
+  const schedule = useMemo(
+    () => computePaymentSchedule(subtotalGov, netSEFee, total),
+    [subtotalGov, netSEFee, total]
+  );
+
+  const handleDiscountChange = (e) => {
+    const raw = Number(e.target.value) || 0;
+    const clamped = Math.max(0, Math.min(COMMERCIAL_POLICIES.maxDiscountPercent, raw));
+    setDiscountPercent(clamped);
+  };
+
   const submit = (e) => {
     e.preventDefault();
     if (!customerName) return alert("Please select or enter a customer name.");
     if (items.length === 0 || !items[0].desc) return alert("Please add at least one item.");
+    if (Number(discountPercent) > COMMERCIAL_POLICIES.maxDiscountPercent) {
+      return alert(`Discount cannot exceed ${COMMERCIAL_POLICIES.maxDiscountPercent}%. Management approval required.`);
+    }
     
     onSave({
-      quoteNumber: isEdit ? existingQuote.quoteNumber : 'SEZ-QT-' + Date.now().toString().slice(-4),
+      quoteNumber: isEdit ? existingQuote.quoteNumber : nextQuoteNumber,
       customerId, customerName, customerEmail, customerPhone, customerBusiness, customerLocation,
       items, subtotalGov, subtotalSE, subtotal, discountPercent, discountAmount, total,
+      paymentSchedule: schedule,
       status, validUntil, createdAt: isEdit ? existingQuote.createdAt : Date.now()
     });
   };
@@ -2049,8 +2141,19 @@ function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div className="card fadein" style={{ width: '100%', maxWidth: 850, maxHeight: '95vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 className="serif" style={{ fontSize: 24, margin: 0 }}>{isEdit ? 'Edit Quotation' : 'Create Quotation'}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <h2 className="serif" style={{ fontSize: 24, margin: 0 }}>{isEdit ? 'Edit Quotation' : 'Create Quotation'}</h2>
+            {!isEdit && (
+              <span style={{
+                fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#0A1F12',
+                background: '#F1F5F9', border: '1px solid #E2E8F0',
+                padding: '6px 12px', borderRadius: 8, letterSpacing: '0.03em'
+              }} title="Next quotation number (auto-assigned)">
+                {nextQuoteNumber}
+              </span>
+            )}
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}><i className="fas fa-times"></i></button>
         </div>
 
@@ -2126,7 +2229,7 @@ function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
             </table>
           </div>
 
-          {/* Totals Section */}
+          {/* Totals + Payment Schedule */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
             <div>
               <label className="form-label">Status</label>
@@ -2135,18 +2238,57 @@ function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
               </select>
               <label className="form-label" style={{ marginTop: 12 }}>Valid Until</label>
               <input type="date" className="form-input" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
+              <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Default: {COMMERCIAL_POLICIES.quotationValidityDays} days from issue.</p>
             </div>
             <div style={{ background: '#F8FAFC', padding: 16, borderRadius: 8, border: '1px solid #E2E8F0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Total Gov Fees</span><span style={{ fontWeight: 700 }}>K{subtotalGov.toLocaleString()}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Total SE Fees</span><span style={{ fontWeight: 700 }}>K{subtotalSE.toLocaleString()}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderTop: '1px solid #E2E8F0', paddingTop: 8 }}>
-                <span style={{ color: '#64748B' }}>Discount (%)</span>
-                <input type="number" min="0" max="100" className="form-input" style={{ width: 80, padding: 4 }} value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} />
+                <span style={{ color: '#64748B' }}>Discount (%) <span style={{ fontSize: 10, color: '#94A3B8' }}>· max {COMMERCIAL_POLICIES.maxDiscountPercent}%</span></span>
+                <input
+                  type="number" min="0" max={COMMERCIAL_POLICIES.maxDiscountPercent}
+                  className="form-input"
+                  style={{ width: 80, padding: 4 }}
+                  value={discountPercent}
+                  onChange={handleDiscountChange}
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Discount Amt</span><span style={{ fontWeight: 700, color: '#DC2626' }}>- K{discountAmount.toLocaleString()}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #0A1F12', paddingTop: 8, marginTop: 8 }}>
                 <span style={{ fontWeight: 800, fontSize: 16 }}>Grand Total</span><span style={{ fontWeight: 800, fontSize: 18, color: '#1E7B3C' }}>K{total.toLocaleString()}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Payment Schedule Preview (auto-calculated per commercial policy) */}
+          <div className="policy-box" style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 800, color: '#8A6828', marginBottom: 8 }}>
+              <i className="fas fa-lock" style={{ marginRight: 6 }}></i> Payment Schedule — Auto-Applied Commercial Policy
+            </div>
+            <div className="policy-row">
+              <span>Government / third-party fees ({COMMERCIAL_POLICIES.govFeesUpfrontPercent}% upfront)</span>
+              <span style={{ fontWeight: 700, color: '#0A1F12' }}>K{schedule.govFee.toLocaleString()}</span>
+            </div>
+            <div className="policy-row">
+              <span>
+                StartEasy service fee due on acceptance
+                {' '}
+                <span style={{ fontSize: 10.5, color: '#8A6828', fontWeight: 600 }}>
+                  ({schedule.isSplit ? `${COMMERCIAL_POLICIES.depositPercent}%` : `${COMMERCIAL_POLICIES.smallServiceUpfrontPercent}%`}
+                  {!schedule.isSplit && ` · ≤ K${COMMERCIAL_POLICIES.smallServiceThreshold}`})
+                </span>
+              </span>
+              <span style={{ fontWeight: 700, color: '#0A1F12' }}>K{schedule.seUpfront.toLocaleString()}</span>
+            </div>
+            {schedule.isSplit && (
+              <div className="policy-row">
+                <span>Balance on completion ({COMMERCIAL_POLICIES.completionPercent}%)</span>
+                <span style={{ fontWeight: 700, color: '#0A1F12' }}>K{schedule.seCompletion.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="policy-row">
+              <span>Due on acceptance</span>
+              <span style={{ color: '#E8730F', fontFamily: 'Playfair Display, serif', fontSize: 15 }}>K{schedule.dueNow.toLocaleString()}</span>
             </div>
           </div>
 
@@ -2174,6 +2316,12 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     }).from(element).save();
   };
+
+  /* ── Recompute schedule from stored totals (fallback to stored if present) ── */
+  const schedule = useMemo(() => {
+    const netSE = Math.max(0, Number(quote.subtotalSE || 0) - Number(quote.discountAmount || 0));
+    return computePaymentSchedule(quote.subtotalGov || 0, netSE, quote.total || 0);
+  }, [quote]);
 
   const waMessage = `Hello ${quote.customerName},\n\nPlease find attached our quotation *${quote.quoteNumber}* for the grand total of *K${quote.total.toLocaleString()}*.\n\nLet us know if you have any questions.`;
   const waLink = quote.customerPhone ? `https://wa.me/${quote.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}` : null;
@@ -2218,7 +2366,7 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
             <h3 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>QUOTATION DETAILS</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 13 }}>
               <tbody>
-                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B', width: '40%' }}>Quotation Number</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.quoteNumber}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B', width: '40%' }}>Quotation Number</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700, fontFamily: 'monospace' }}>{quote.quoteNumber}</td></tr>
                 <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Date Issued</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{fmtDate(quote.createdAt)}</td></tr>
                 <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Valid Until</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{fmtDate(quote.validUntil)}</td></tr>
                 <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Customer Name</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.customerName}</td></tr>
@@ -2295,8 +2443,59 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
               <li>Handover of available registration documents and certificates.</li>
             </ul>
 
-            {/* 4. Terms and Conditions */}
-            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>4. TERMS AND CONDITIONS</h3>
+            {/* 4. Payment Schedule (dynamic per commercial policy) */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>4. PAYMENT SCHEDULE</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 12 }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '8px 0', borderBottom: '1px dashed #ddd' }}>Government / Third-party fees — <strong>paid in advance</strong></td>
+                  <td style={{ padding: '8px 0', borderBottom: '1px dashed #ddd', textAlign: 'right', fontWeight: 700 }}>K {schedule.govFee.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '8px 0', borderBottom: '1px dashed #ddd' }}>
+                    StartEasy service fee — <strong>{schedule.isSplit ? `${COMMERCIAL_POLICIES.depositPercent}% deposit` : '100% upfront'}</strong>
+                    {!schedule.isSplit && ` (services ≤ K${COMMERCIAL_POLICIES.smallServiceThreshold})`}
+                  </td>
+                  <td style={{ padding: '8px 0', borderBottom: '1px dashed #ddd', textAlign: 'right', fontWeight: 700 }}>K {schedule.seUpfront.toLocaleString()}</td>
+                </tr>
+                {schedule.isSplit && (
+                  <tr>
+                    <td style={{ padding: '8px 0', borderBottom: '1px dashed #ddd' }}>
+                      StartEasy service fee — <strong>{COMMERCIAL_POLICIES.completionPercent}% on completion</strong>
+                    </td>
+                    <td style={{ padding: '8px 0', borderBottom: '1px dashed #ddd', textAlign: 'right', fontWeight: 700 }}>K {schedule.seCompletion.toLocaleString()}</td>
+                  </tr>
+                )}
+                <tr style={{ background: '#FEF3C7' }}>
+                  <td style={{ padding: '10px 12px', fontWeight: 800 }}>Total due on acceptance</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#B45309' }}>K {schedule.dueNow.toLocaleString()}</td>
+                </tr>
+                {schedule.isSplit && (
+                  <tr>
+                    <td style={{ padding: '8px 0', fontWeight: 800 }}>Balance due on completion</td>
+                    <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 800 }}>K {schedule.dueOnCompletion.toLocaleString()}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <p style={{ fontSize: 11.5, color: '#64748B', margin: '0 0 24px', fontStyle: 'italic' }}>
+              <strong>Payment Methods:</strong> Airtel Money, MTN MoMo, Bank Transfer. Confirmation of payment is required before work begins.
+            </p>
+
+            {/* 5. Commercial Policies */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>5. COMMERCIAL POLICIES</h3>
+            <ul style={{ fontSize: 12, paddingLeft: 20, margin: '0 0 24px', lineHeight: 1.7 }}>
+              <li><strong>Small services (up to K{COMMERCIAL_POLICIES.smallServiceThreshold}):</strong> Paid 100% upfront on acceptance.</li>
+              <li><strong>Services above K{COMMERCIAL_POLICIES.smallServiceThreshold}:</strong> {COMMERCIAL_POLICIES.depositPercent}% deposit on acceptance, {COMMERCIAL_POLICIES.completionPercent}% balance on completion.</li>
+              <li><strong>Government fees:</strong> Paid in advance. StartEasy remits to the relevant authority on your behalf.</li>
+              <li><strong>Third-party expenses:</strong> Paid in advance.</li>
+              <li><strong>Quotation validity:</strong> {COMMERCIAL_POLICIES.quotationValidityDays} days from the date of issue.</li>
+              <li><strong>Additional work:</strong> Any work outside the scope above is quoted separately.</li>
+              <li><strong>Discounts:</strong> Capped at {COMMERCIAL_POLICIES.maxDiscountPercent}% and only with management approval.</li>
+            </ul>
+
+            {/* 6. Terms and Conditions */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>6. TERMS AND CONDITIONS</h3>
             <ol style={{ fontSize: 12, paddingLeft: 20, margin: '0 0 24px', lineHeight: 1.6 }}>
               <li>This quotation is based on the information provided by the customer.</li>
               <li>Government and regulatory fees are subject to the applicable official fee schedules.</li>
@@ -2306,18 +2505,11 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
               <li>Processing timelines depend on the relevant government authorities and are not guaranteed by StartEasy Zambia.</li>
               <li>Work commences upon quotation acceptance and receipt of the agreed initial payment.</li>
             </ol>
-            <p style={{ fontSize: 12, fontWeight: 800, marginBottom: 24 }}>Quotation Validity: 14 days from the date of issue.</p>
+            <p style={{ fontSize: 12, fontWeight: 800, marginBottom: 24 }}>Quotation Validity: {COMMERCIAL_POLICIES.quotationValidityDays} days from the date of issue.</p>
 
-            {/* 5. Payment Details */}
-            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>5. PAYMENT DETAILS</h3>
-            <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 32 }}>
-              <p style={{ margin: 0 }}><strong>Payment Terms:</strong> 50% Commencement, 50% on Completion.</p>
-              <p style={{ margin: 0 }}><strong>Payment Methods:</strong> Airtel Money, MTN MoMo, Bank Transfer.</p>
-            </div>
-
-            {/* 6. Customer Acceptance */}
-            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>6. CUSTOMER ACCEPTANCE</h3>
-            <p style={{ fontSize: 12, margin: '0 0 24px' }}>I confirm that I have reviewed and accepted the services, costs and terms outlined in this quotation.</p>
+            {/* 7. Customer Acceptance */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>7. CUSTOMER ACCEPTANCE</h3>
+            <p style={{ fontSize: 12, margin: '0 0 24px' }}>I confirm that I have reviewed and accepted the services, costs, payment schedule, commercial policies and terms outlined in this quotation.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 40 }}>
               <div style={{ borderBottom: '1px solid #333', paddingBottom: 4 }}>
                 <div style={{ fontSize: 12, color: '#666', marginTop: 24 }}>Customer Name</div>
@@ -2955,7 +3147,9 @@ function AdminPortal({ onExit }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Quotation Management</h1>
-                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Generate, send, and track formal quotes.</p>
+                  <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>
+                    Generate, send, and track formal quotes. Next number: <strong style={{ fontFamily: 'monospace', color: '#E8730F' }}>{computeNextQuoteNumber(quotations)}</strong>
+                  </p>
                 </div>
                 <button onClick={() => { setEditingQuote(null); setShowCreateQuote(true); }} className="btn btn-primary"><i className="fas fa-plus"></i> Create Quotation</button>
               </div>
@@ -3263,6 +3457,17 @@ function AdminPortal({ onExit }) {
                     View your full cross-platform journey at the <strong>Unified Visitor Intelligence</strong> dashboard.
                   </p>
                 </div>
+                <div className="card">
+                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 6px' }}>Commercial Policies</h3>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 12px' }}>Active rules enforced on every quotation.</p>
+                  <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748B' }}>Small service threshold</span><strong>K{COMMERCIAL_POLICIES.smallServiceThreshold}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748B' }}>Deposit (over threshold)</span><strong>{COMMERCIAL_POLICIES.depositPercent}%</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748B' }}>Completion balance</span><strong>{COMMERCIAL_POLICIES.completionPercent}%</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748B' }}>Quotation validity</span><strong>{COMMERCIAL_POLICIES.quotationValidityDays} days</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748B' }}>Max discount</span><strong>{COMMERCIAL_POLICIES.maxDiscountPercent}%</strong></div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -3274,7 +3479,7 @@ function AdminPortal({ onExit }) {
       {showCreateLead && <CreateLeadModal onClose={() => setShowCreateLead(false)} onSave={createManualLead} />}
       {showCreateOrder && <CreateOrderModal onClose={() => setShowCreateOrder(false)} onSave={createOrder} leads={leads} />}
       {showCreateTicket && <CreateTicketModal onClose={() => setShowCreateTicket(false)} onSave={createTicket} leads={leads} />}
-      {showCreateQuote && <CreateQuotationModal onClose={() => { setShowCreateQuote(false); setEditingQuote(null); }} onSave={saveQuote} leads={leads} existingQuote={editingQuote} />}
+      {showCreateQuote && <CreateQuotationModal onClose={() => { setShowCreateQuote(false); setEditingQuote(null); }} onSave={saveQuote} leads={leads} existingQuote={editingQuote} quotations={quotations} />}
       {selectedQuote && <QuotationViewer quote={selectedQuote} onClose={() => setSelectedQuote(null)} onUpdateStatus={updateQuoteStatus} onConvertToInvoice={convertQuoteToInvoice} onEdit={handleEditQuote} />}
     </div>
   );
