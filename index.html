@@ -2376,11 +2376,15 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
               </tbody>
             </table>
 
-            {/* 1. Service Description */}
+            {/* 1. Service Description - DYNAMIC */}
             <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>1. SERVICE DESCRIPTION</h3>
             <div style={{ background: '#F8FAFC', padding: 16, borderRadius: 8, marginBottom: 24, border: '1px solid #E2E8F0' }}>
-              <p style={{ fontWeight: 800, margin: '0 0 8px' }}>Package: Business Registration & Licensing</p>
-              <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>StartEasy Zambia will facilitate the business registration and applicable licensing processes to help the customer establish a legally registered and appropriately licensed business in Zambia.</p>
+              <p style={{ fontWeight: 800, margin: '0 0 8px' }}>
+                Package{quote.items.length > 1 ? 's' : ''}: {quote.items.map(i => i.desc).join(' + ')}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>
+                StartEasy Zambia will facilitate the administrative processes for the specific service(s) requested above, ensuring compliance with the applicable regulations and delivering the agreed outputs.
+              </p>
             </div>
 
             {/* 2. Itemised Service Costs */}
@@ -2430,17 +2434,17 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, o
               </div>
             </div>
 
-            {/* 3. Scope of Services */}
+            {/* 3. Scope of Services - DYNAMIC */}
             <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>3. SCOPE OF SERVICES</h3>
-            <p style={{ fontSize: 12, margin: '0 0 8px' }}>The service includes:</p>
+            <p style={{ fontSize: 12, margin: '0 0 8px' }}>The service includes administrative support for:</p>
             <ul style={{ fontSize: 12, paddingLeft: 20, margin: '0 0 24px', lineHeight: 1.6 }}>
-              <li>Initial customer consultation and requirements assessment.</li>
-              <li>Assistance with company registration documentation.</li>
-              <li>Facilitation of applicable tax registration.</li>
-              <li>Assessment and facilitation of applicable environmental approval requirements.</li>
-              <li>Identification and facilitation of relevant local council licensing requirements.</li>
-              <li>Application follow-ups and progress updates.</li>
-              <li>Handover of available registration documents and certificates.</li>
+              {quote.items.map((item, i) => (
+                <li key={i} style={{ marginBottom: 4 }}>
+                  <strong>{item.desc}</strong> (Qty: {item.qty}) — Preparation, submission, and tracking as applicable.
+                </li>
+              ))}
+              <li>Ongoing communication and progress updates.</li>
+              <li>Handover of available confirmation documents or receipts.</li>
             </ul>
 
             {/* 4. Payment Schedule (dynamic per commercial policy) */}
