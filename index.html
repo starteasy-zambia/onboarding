@@ -1891,20 +1891,22 @@ function CreateTicketModal({ onClose, onSave, leads }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CREATE QUOTATION MODAL
+   CREATE / EDIT QUOTATION MODAL
    ═══════════════════════════════════════════════════════════════════ */
-function CreateQuotationModal({ onClose, onSave, leads }) {
-  const [customerId, setCustomerId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerBusiness, setCustomerBusiness] = useState('');
-  const [customerLocation, setCustomerLocation] = useState('');
+function CreateQuotationModal({ onClose, onSave, leads, existingQuote }) {
+  const isEdit = !!existingQuote;
   
-  const [items, setItems] = useState([{ desc: '', govFee: 0, qty: 1, price: 0 }]);
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [status, setStatus] = useState('Draft');
-  const [validUntil, setValidUntil] = useState(new Date(Date.now() + 14 * 24 * 3600000).toISOString().split('T')[0]);
+  const [customerId, setCustomerId] = useState(isEdit ? existingQuote.customerId : '');
+  const [customerName, setCustomerName] = useState(isEdit ? existingQuote.customerName : '');
+  const [customerEmail, setCustomerEmail] = useState(isEdit ? existingQuote.customerEmail : '');
+  const [customerPhone, setCustomerPhone] = useState(isEdit ? existingQuote.customerPhone : '');
+  const [customerBusiness, setCustomerBusiness] = useState(isEdit ? existingQuote.customerBusiness : '');
+  const [customerLocation, setCustomerLocation] = useState(isEdit ? existingQuote.customerLocation : '');
+  
+  const [items, setItems] = useState(isEdit ? existingQuote.items : [{ desc: '', govFee: 0, qty: 1, price: 0 }]);
+  const [discountPercent, setDiscountPercent] = useState(isEdit ? existingQuote.discountPercent : 0);
+  const [status, setStatus] = useState(isEdit ? existingQuote.status : 'Draft');
+  const [validUntil, setValidUntil] = useState(isEdit ? existingQuote.validUntil : new Date(Date.now() + 14 * 24 * 3600000).toISOString().split('T')[0]);
 
   const handleCustomerSelect = (e) => {
     const id = e.target.value;
@@ -1942,7 +1944,7 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
   const subtotalSE = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
   const subtotal = subtotalGov + subtotalSE;
   
-  const discountAmount = subtotalSE * (discountPercent / 100); // Discount applies only to SE fee
+  const discountAmount = subtotalSE * (discountPercent / 100);
   const total = subtotal - discountAmount;
 
   const submit = (e) => {
@@ -1951,10 +1953,10 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
     if (items.length === 0 || !items[0].desc) return alert("Please add at least one item.");
     
     onSave({
-      quoteNumber: 'SEZ-QT-' + Date.now().toString().slice(-4),
+      quoteNumber: isEdit ? existingQuote.quoteNumber : 'SEZ-QT-' + Date.now().toString().slice(-4),
       customerId, customerName, customerEmail, customerPhone, customerBusiness, customerLocation,
       items, subtotalGov, subtotalSE, subtotal, discountPercent, discountAmount, total,
-      status, validUntil, createdAt: Date.now()
+      status, validUntil, createdAt: isEdit ? existingQuote.createdAt : Date.now()
     });
   };
   
@@ -1962,7 +1964,7 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div className="card fadein" style={{ width: '100%', maxWidth: 850, maxHeight: '95vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 className="serif" style={{ fontSize: 24, margin: 0 }}>Create Quotation</h2>
+          <h2 className="serif" style={{ fontSize: 24, margin: 0 }}>{isEdit ? 'Edit Quotation' : 'Create Quotation'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}><i className="fas fa-times"></i></button>
         </div>
 
@@ -2064,7 +2066,7 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} className="btn btn-outline">Cancel</button>
-            <button type="submit" className="btn btn-primary"><i className="fas fa-save"></i> Save Quotation</button>
+            <button type="submit" className="btn btn-primary"><i className="fas fa-save"></i> {isEdit ? 'Update Quotation' : 'Save Quotation'}</button>
           </div>
         </form>
       </div>
@@ -2073,9 +2075,9 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   QUOTATION VIEWER MODAL (Adopted Template)
+   QUOTATION VIEWER MODAL
    ═══════════════════════════════════════════════════════════════════ */
-function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice }) {
+function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice, onEdit }) {
   const generatePDF = () => {
     const element = document.getElementById('quotation-print-area');
     html2pdf().set({
@@ -2107,6 +2109,7 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice })
             )}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => onEdit(quote)} className="btn btn-outline" style={{ padding: '6px 12px' }}><i className="fas fa-pen"></i> Edit</button>
             <button onClick={generatePDF} className="btn btn-outline" style={{ padding: '6px 12px' }}><i className="fas fa-file-pdf"></i> PDF</button>
             {waLink && <a href={waLink} target="_blank" rel="noreferrer" className="btn" style={{ background: '#25D366', color: '#fff', padding: '6px 12px' }}><i className="fab fa-whatsapp"></i> Send</a>}
             {quote.customerEmail && <a href={mailLink} className="btn btn-outline" style={{ padding: '6px 12px' }}><i className="fas fa-envelope"></i> Email</a>}
@@ -2114,7 +2117,7 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice })
           </div>
         </div>
 
-        {/* Printable Area - Adopted Template */}
+        {/* Printable Area */}
         <div style={{ padding: '40px 50px', background: '#fff', fontFamily: 'Inter, sans-serif', color: '#0A1F12' }}>
           <div id="quotation-print-area">
             
@@ -2240,7 +2243,7 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice })
 
             {/* Footer */}
             <div style={{ textAlign: 'center', borderTop: '2px solid #0A1F12', paddingTop: 16, fontSize: 11, color: '#64748B' }}>
-              <p style={{ fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>STARTEASY ZAMBIA ADMIN SERVICES LIMITED</p>
+              <p style={{ fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>STARTEASY ZAMBIA</p>
               <p style={{ fontStyle: 'italic', margin: '0 0 8px' }}>Your Business Support & Venture Development Partner.</p>
               <p style={{ margin: 0 }}>Website: www.starteasyzambia.com | Email: admin@starteasyzambia.com | Phone: +260 762 499 581</p>
             </div>
@@ -2274,6 +2277,8 @@ function AdminPortal({ onExit }) {
   const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   
+  const [editingQuote, setEditingQuote] = useState(null);
+
   const [soundOn, setSoundOn] = useState(true);
   const [toasts, setToasts] = useState([]);
   const [search, setSearch] = useState('');
@@ -2334,8 +2339,20 @@ function AdminPortal({ onExit }) {
     try { await db.collection('se_tickets').add(data); setShowCreateTicket(false); } catch (err) { alert("Failed to log ticket: " + err.message); }
   };
 
-  const createQuote = async (data) => {
-    try { await db.collection('se_quotations').add(data); setShowCreateQuote(false); } catch (err) { alert("Failed to save quotation: " + err.message); }
+  const saveQuote = async (data) => {
+    try {
+      if (editingQuote) {
+        await db.collection('se_quotations').doc(editingQuote.id).update(data);
+        setShowCreateQuote(false);
+        setEditingQuote(null);
+        if (selectedQuote && selectedQuote.id === editingQuote.id) {
+          setSelectedQuote({ ...selectedQuote, ...data });
+        }
+      } else {
+        await db.collection('se_quotations').add(data);
+        setShowCreateQuote(false);
+      }
+    } catch (err) { alert("Failed to save quotation: " + err.message); }
   };
 
   const updateOrderStatus = async (id, newStatus) => {
@@ -2388,6 +2405,12 @@ function AdminPortal({ onExit }) {
     } catch (e) {
       alert('Conversion failed: ' + e.message);
     }
+  };
+
+  const handleEditQuote = (quote) => {
+    setSelectedQuote(null); // close viewer
+    setEditingQuote(quote);
+    setShowCreateQuote(true);
   };
 
   // ─── CALCULATIONS ───
@@ -2848,7 +2871,7 @@ function AdminPortal({ onExit }) {
                   <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Quotation Management</h1>
                   <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Generate, send, and track formal quotes.</p>
                 </div>
-                <button onClick={() => setShowCreateQuote(true)} className="btn btn-primary"><i className="fas fa-plus"></i> Create Quotation</button>
+                <button onClick={() => { setEditingQuote(null); setShowCreateQuote(true); }} className="btn btn-primary"><i className="fas fa-plus"></i> Create Quotation</button>
               </div>
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
@@ -2877,7 +2900,8 @@ function AdminPortal({ onExit }) {
                             <td className="table-td"><span className={`status-badge ${st.color}`}>{st.label}</span></td>
                             <td className="table-td" style={{ textAlign: 'center', display: 'flex', gap: 10, justifyContent: 'center' }}>
                               <span style={{ fontSize: 13, color: '#E8730F', fontWeight: 600 }}>View</span>
-                              <button onClick={(e) => { e.stopPropagation(); deleteQuote(q.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}><i className="fas fa-trash-alt"></i></button>
+                              <button onClick={(e) => { e.stopPropagation(); handleEditQuote(q); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B6CA8' }} title="Edit"><i className="fas fa-pen"></i></button>
+                              <button onClick={(e) => { e.stopPropagation(); deleteQuote(q.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }} title="Delete"><i className="fas fa-trash-alt"></i></button>
                             </td>
                           </tr>
                         );
@@ -3164,8 +3188,8 @@ function AdminPortal({ onExit }) {
       {showCreateLead && <CreateLeadModal onClose={() => setShowCreateLead(false)} onSave={createManualLead} />}
       {showCreateOrder && <CreateOrderModal onClose={() => setShowCreateOrder(false)} onSave={createOrder} leads={leads} />}
       {showCreateTicket && <CreateTicketModal onClose={() => setShowCreateTicket(false)} onSave={createTicket} leads={leads} />}
-      {showCreateQuote && <CreateQuotationModal onClose={() => setShowCreateQuote(false)} onSave={createQuote} leads={leads} />}
-      {selectedQuote && <QuotationViewer quote={selectedQuote} onClose={() => setSelectedQuote(null)} onUpdateStatus={updateQuoteStatus} onConvertToInvoice={convertQuoteToInvoice} />}
+      {showCreateQuote && <CreateQuotationModal onClose={() => { setShowCreateQuote(false); setEditingQuote(null); }} onSave={saveQuote} leads={leads} existingQuote={editingQuote} />}
+      {selectedQuote && <QuotationViewer quote={selectedQuote} onClose={() => setSelectedQuote(null)} onUpdateStatus={updateQuoteStatus} onConvertToInvoice={convertQuoteToInvoice} onEdit={handleEditQuote} />}
     </div>
   );
 }
