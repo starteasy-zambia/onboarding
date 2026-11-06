@@ -2204,7 +2204,10 @@ function AdminPortal({ onExit }) {
       await db.collection('se_leads').doc(id).update(updates);
       setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
       if (selectedLead && selectedLead.id === id) setSelectedLead({ ...selectedLead, ...updates });
-    } catch (err) { console.error(err); alert("Failed to update lead."); }
+    } catch (err) { 
+      console.error(err); 
+      alert("Failed to update lead: " + err.message); 
+    }
   };
 
   const deleteLead = async (id) => {
@@ -2212,38 +2215,67 @@ function AdminPortal({ onExit }) {
       await db.collection('se_leads').doc(id).delete();
       setSelectedLead(null);
       setLeads(prev => prev.filter(l => l.id !== id));
-    } catch (err) { alert("Failed to delete lead."); }
+    } catch (err) { 
+      console.error(err);
+      alert("Failed to delete lead: " + err.message); 
+    }
   };
 
   const createManualLead = async (data) => {
-    try { await db.collection('se_leads').add(data); setShowCreateLead(false); } catch (err) { alert("Failed to add lead."); }
+    try { 
+      await db.collection('se_leads').add(data); 
+      setShowCreateLead(false); 
+    } catch (err) { 
+      console.error(err);
+      alert("Failed to add lead: " + err.message); 
+    }
   };
 
   const createOrder = async (data) => {
-    try { await db.collection('se_orders').add(data); setShowCreateOrder(false); } catch (err) { alert("Failed to create order."); }
+    try { 
+      await db.collection('se_orders').add(data); 
+      setShowCreateOrder(false); 
+    } catch (err) { 
+      console.error(err);
+      alert("Failed to create order: " + err.message); 
+    }
   };
 
   const createTicket = async (data) => {
-    try { await db.collection('se_tickets').add(data); setShowCreateTicket(false); } catch (err) { alert("Failed to log ticket."); }
+    try { 
+      await db.collection('se_tickets').add(data); 
+      setShowCreateTicket(false); 
+    } catch (err) { 
+      console.error(err);
+      alert("Failed to log ticket: " + err.message); 
+    }
   };
 
   const createQuote = async (data) => {
-    try { await db.collection('se_quotations').add(data); setShowCreateQuote(false); } catch (err) { alert("Failed to save quotation."); }
+    try { 
+      await db.collection('se_quotations').add(data); 
+      setShowCreateQuote(false); 
+    } catch (err) { 
+      console.error(err);
+      alert("Failed to save quotation: " + err.message); 
+    }
   };
 
   const updateOrderStatus = async (id, newStatus) => {
-    try { await db.collection('se_orders').doc(id).update({ status: newStatus }); } catch (e) { alert(e.message); }
+    try { await db.collection('se_orders').doc(id).update({ status: newStatus }); } 
+    catch (e) { alert("Failed: " + e.message); }
   };
 
   const updateTicketStatus = async (id, newStatus) => {
-    try { await db.collection('se_tickets').doc(id).update({ status: newStatus }); } catch (e) { alert(e.message); }
+    try { await db.collection('se_tickets').doc(id).update({ status: newStatus }); } 
+    catch (e) { alert("Failed: " + e.message); }
   };
 
   const updateQuoteStatus = async (id, newStatus) => {
     try {
       await db.collection('se_quotations').doc(id).update({ status: newStatus });
       if (selectedQuote && selectedQuote.id === id) setSelectedQuote({ ...selectedQuote, status: newStatus });
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert("Failed: " + e.message); }
   };
 
   const convertQuoteToInvoice = async (quote) => {
