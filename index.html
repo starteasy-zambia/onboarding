@@ -1041,55 +1041,141 @@ const auth = firebase.auth();
 
 const WHATSAPP_NUMBER = '260762499581';
 
-/* ─── SERVICE CATALOGUE ─── */
+/* ─── SERVICE CATALOGUE ───
+   Sourced from the live StartEasy platforms:
+   • Venture Building Service Platform (business plan, brand, EIZ/NCC, investor readiness)
+   • Financial Support & Management (starter/business control/growth packages)
+   • Suppliers Directory (listings, verification, sourcing support)
+   • Administrative Services Desk (PACRA, ZRA, NAPSA, NHIMA, WCFCB, licensing, sector regulators)
+*/
 const SERVICE_CATALOGUE = [
-  { 
-    category: 'A. BUSINESS REGISTRATION', 
+  {
+    category: 'A. BUSINESS REGISTRATION & CORPORATE (PACRA)',
     items: [
-      { name: 'Business name registration assistance', price: 250 },
-      { name: 'Limited company registration assistance', price: 600 },
-      { name: 'Company name search and reservation assistance', price: 150 },
-      { name: 'Company documentation support', price: 250 },
-      { name: 'Company amendments and updates', price: 350, desc: 'From' }
+      { name: 'Business Structure Advisory — Wizard', price: 25 },
+      { name: 'Name Preparation & Clearance — Wizard', price: 25 },
+      { name: 'Company Incorporation', price: 750 },
+      { name: 'Business Name Registration', price: 400 },
+      { name: 'Company Amendments', price: 400 },
+      { name: 'Annual Return & Statutory Filings', price: 400 },
+      { name: 'Beneficial Ownership Filing', price: 400 },
+      { name: 'Business Closure & Deregistration', price: 750 },
+      { name: 'Corporate Records Administration', price: 500, desc: 'Monthly' }
     ]
   },
-  { 
-    category: 'B. TAX & COMPLIANCE SUPPORT', 
+  {
+    category: 'B. TAX & COMPLIANCE (ZRA)',
     items: [
-      { name: 'TPIN registration assistance', price: 150, note: 'Gov fee free' },
-      { name: 'Tax account setup and guidance', price: 250 },
-      { name: 'Tax registration support', price: 250, desc: 'From' },
-      { name: 'Tax compliance documentation assistance', price: 350, desc: 'From' }
+      { name: 'TPIN Registration', price: 250, note: 'Gov fee free' },
+      { name: 'Tax Type Registration (VAT / PAYE / WHT)', price: 400 },
+      { name: 'Recurring Return Filing', price: 250, desc: 'Monthly' },
+      { name: 'Tax Clearance Certificate', price: 400 },
+      { name: 'Tax Compliance Recovery', price: 750, desc: 'From' },
+      { name: 'Taxpayer Information Update', price: 250 },
+      { name: 'Annual Tax Compliance', price: 400 }
     ]
   },
-  { 
-    category: 'C. BUSINESS LICENSING & PERMITS', 
+  {
+    category: 'C. EMPLOYEE COMPLIANCE (NAPSA · NHIMA · WCFCB)',
     items: [
-      { name: 'Council licence application assistance', price: 400 },
-      { name: 'ZEMA requirements assessment and application assistance', price: 500, desc: 'From' },
-      { name: 'Other business permit application assistance', price: 350, desc: 'From' },
-      { name: 'Licence renewal assistance', price: 300, desc: 'From' },
-      { name: 'Regulatory documentation support', price: 250, desc: 'From' }
+      { name: 'NAPSA Employer Registration', price: 250 },
+      { name: 'NAPSA Employee Registration', price: 250 },
+      { name: 'NAPSA Monthly Contributions', price: 250, desc: 'Monthly' },
+      { name: 'NAPSA Compliance Clean-Up', price: 400 },
+      { name: 'NHIMA Employer Registration', price: 250 },
+      { name: 'NHIMA Employee Registration', price: 250 },
+      { name: 'NHIMA Monthly Premiums', price: 250, desc: 'Monthly' },
+      { name: 'NHIMA Compliance Regularisation', price: 400 },
+      { name: 'WCFCB Employer Registration', price: 250 },
+      { name: 'WCFCB Annual Assessment', price: 400 },
+      { name: 'WCFCB Compliance Regularisation', price: 400 }
     ]
   },
-  { 
-    category: 'D. BUSINESS SUPPORT SERVICES', 
+  {
+    category: 'D. LICENSING & PERMITS (COUNCILS)',
     items: [
-      { name: 'Business profile preparation', price: 500, desc: 'From' },
-      { name: 'Business plan preparation', price: 1500, desc: 'From' },
-      { name: 'Company profile and documentation', price: 500, desc: 'From' },
-      { name: 'Business proposal preparation', price: 750, desc: 'From' },
-      { name: 'Financial records setup', price: 500, desc: 'From' },
-      { name: 'Basic financial planning', price: 500, desc: 'From' }
+      { name: 'Council Trading Licence', price: 400 },
+      { name: 'Health & Food Handling Permit', price: 400 },
+      { name: 'Fire Certificate', price: 250 },
+      { name: 'Premises, Zoning & Planning Approval', price: 400 },
+      { name: 'Licence & Permit Renewal', price: 250 }
     ]
   },
-  { 
-    category: 'E. BUNDLED SERVICE PACKAGES', 
+  {
+    category: 'E. SECTOR REGULATORS',
     items: [
-      { name: 'Business Name Registration Package', price: 350 },
-      { name: 'Limited Company Registration Package', price: 750 },
-      { name: 'Business Registration & Tax Setup Package', price: 850 },
-      { name: 'Business Registration & Licensing Coordination', price: 1500, desc: 'From' }
+      { name: 'ZDA Investment Registration', price: 750 },
+      { name: 'ZEMA Environmental Compliance', price: 750 },
+      { name: 'Tourism Enterprise Registration (ZTA)', price: 400 },
+      { name: 'ZABS Standards Certification', price: 400 },
+      { name: 'ERB Energy Licensing', price: 400 },
+      { name: 'ZICTA ICT Licensing', price: 400 },
+      { name: 'EIZ Registration & Compliance', price: 750, desc: 'From' },
+      { name: 'NCC Contractor Registration', price: 900, desc: 'From' },
+      { name: 'Cooperative Registration', price: 400 },
+      { name: 'CEEC Registration', price: 400 },
+      { name: 'ZPPA Supplier Registration', price: 400 }
+    ]
+  },
+  {
+    category: 'F. COMPLIANCE MANAGEMENT',
+    items: [
+      { name: 'Business Compliance Check-Up', price: 750 },
+      { name: 'Compliance Regularisation Programme', price: 1500, desc: 'From' },
+      { name: 'Ongoing Compliance Management', price: 1200, desc: 'Monthly' }
+    ]
+  },
+  {
+    category: 'G. FINANCIAL SUPPORT PACKAGES',
+    items: [
+      { name: 'Financial Starter', price: 1000, desc: 'Monthly' },
+      { name: 'Business Control', price: 2000, desc: 'Monthly' },
+      { name: 'Growth & Financial Planning', price: 4000, desc: 'Monthly' }
+    ]
+  },
+  {
+    category: 'H. VENTURE BUILDING SERVICES',
+    items: [
+      { name: 'Business Plan Development', price: 750 },
+      { name: 'Company Registration Support — Business Name', price: 400 },
+      { name: 'Company Registration Support — Company Incorporation', price: 750 },
+      { name: 'Supplier & Equipment Sourcing', price: 600, desc: 'From' },
+      { name: 'Brand & Marketing Strategy', price: 1000 },
+      { name: 'Financial Projections', price: 800 },
+      { name: 'Investor Readiness & Introductions', price: 1200, desc: 'From' },
+      { name: 'Sales Channel Development', price: 400, desc: 'Monthly' }
+    ]
+  },
+  {
+    category: 'I. PERSONAL ADMINISTRATIVE SERVICES',
+    items: [
+      { name: 'Document Preparation', price: 250 },
+      { name: 'Certificates & Statutory Documents', price: 400 },
+      { name: 'Application Submissions', price: 250 },
+      { name: 'Application Follow-Up', price: 250 },
+      { name: 'Scanning, Printing & Copies', price: 25 }
+    ]
+  },
+  {
+    category: 'J. OUTSOURCED ADMINISTRATIVE DESK',
+    items: [
+      { name: 'Outsourced Desk — Starter', price: 250, desc: 'Monthly' },
+      { name: 'Outsourced Desk — Organisation', price: 500, desc: 'Monthly' },
+      { name: 'Outsourced Desk — Executive', price: 1200, desc: 'Monthly' },
+      { name: 'Administrative One-Off Clean-Up', price: 750 }
+    ]
+  },
+  {
+    category: 'K. SUPPLIERS DIRECTORY & MARKETPLACE',
+    items: [
+      { name: 'Supplier Listing — Monthly (Local)', price: 100 },
+      { name: 'Supplier Listing — Monthly (International)', price: 140 },
+      { name: 'Supplier Listing — Annual (Local)', price: 1000 },
+      { name: 'Supplier Listing — Annual (International)', price: 1400 },
+      { name: 'Buyer Access Subscription', price: 50, desc: 'Monthly' },
+      { name: 'Supplier Verification (One-off)', price: 75 },
+      { name: 'Campaign Placement', price: 455 },
+      { name: 'Sourcing & Procurement Support', price: 600 }
     ]
   }
 ];
@@ -2918,7 +3004,7 @@ function AdminPortal({ onExit }) {
             <div className="fadein">
               <div style={{ marginBottom: 24 }}>
                 <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Service Catalogue & Pricing</h1>
-                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Standard approved services for quotations.</p>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>Live services across all StartEasy platforms — Venture, Financial, Directory, and Administrative Desks.</p>
               </div>
               <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
                 {SERVICE_CATALOGUE.map((cat, i) => (
@@ -2931,7 +3017,7 @@ function AdminPortal({ onExit }) {
                             <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
                             {item.note && <div style={{ fontSize: 11, color: '#E8730F', marginTop: 2 }}>{item.note}</div>}
                           </div>
-                          <div style={{ fontWeight: 800, color: '#1E7B3C', fontSize: 14 }}>{item.desc ? item.desc + ' ' : ''}K{item.price.toLocaleString()}</div>
+                          <div style={{ fontWeight: 800, color: '#1E7B3C', fontSize: 14, whiteSpace: 'nowrap' }}>{item.desc ? item.desc + ' ' : ''}K{item.price.toLocaleString()}</div>
                         </div>
                       ))}
                     </div>
