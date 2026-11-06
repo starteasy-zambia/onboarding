@@ -1043,21 +1043,55 @@ const WHATSAPP_NUMBER = '260762499581';
 
 /* ─── SERVICE CATALOGUE ─── */
 const SERVICE_CATALOGUE = [
-  { category: 'Business Registration', items: [
-    { name: 'Company Incorporation (PACRA)', price: 750, desc: 'Full company registration including certificate and articles.' },
-    { name: 'Business Name Registration', price: 400, desc: 'Registration for sole traders and partnerships.' },
-    { name: 'Name Clearance', price: 25, desc: 'Reservation of company name.' }
-  ]},
-  { category: 'Tax & Compliance', items: [
-    { name: 'TPIN Registration', price: 250, desc: 'Taxpayer Identification Number setup.' },
-    { name: 'Annual Tax Returns', price: 400, desc: 'Preparation and filing of annual returns.' },
-    { name: 'Compliance Audit', price: 750, desc: 'Full compliance health check.' }
-  ]},
-  { category: 'Financial & Advisory', items: [
-    { name: 'Bookkeeping (Monthly)', price: 1000, desc: 'Recording of transactions, reconciliation and reporting.' },
-    { name: 'Venture Building Services', price: 600, desc: 'Business plan, pitch deck, and financial modelling.' },
-    { name: 'Payroll Management', price: 1200, desc: 'Monthly payroll processing and statutory deductions.' }
-  ]}
+  { 
+    category: 'A. BUSINESS REGISTRATION', 
+    items: [
+      { name: 'Business name registration assistance', price: 250 },
+      { name: 'Limited company registration assistance', price: 600 },
+      { name: 'Company name search and reservation assistance', price: 150 },
+      { name: 'Company documentation support', price: 250 },
+      { name: 'Company amendments and updates', price: 350, desc: 'From' }
+    ]
+  },
+  { 
+    category: 'B. TAX & COMPLIANCE SUPPORT', 
+    items: [
+      { name: 'TPIN registration assistance', price: 150, note: 'Gov fee free' },
+      { name: 'Tax account setup and guidance', price: 250 },
+      { name: 'Tax registration support', price: 250, desc: 'From' },
+      { name: 'Tax compliance documentation assistance', price: 350, desc: 'From' }
+    ]
+  },
+  { 
+    category: 'C. BUSINESS LICENSING & PERMITS', 
+    items: [
+      { name: 'Council licence application assistance', price: 400 },
+      { name: 'ZEMA requirements assessment and application assistance', price: 500, desc: 'From' },
+      { name: 'Other business permit application assistance', price: 350, desc: 'From' },
+      { name: 'Licence renewal assistance', price: 300, desc: 'From' },
+      { name: 'Regulatory documentation support', price: 250, desc: 'From' }
+    ]
+  },
+  { 
+    category: 'D. BUSINESS SUPPORT SERVICES', 
+    items: [
+      { name: 'Business profile preparation', price: 500, desc: 'From' },
+      { name: 'Business plan preparation', price: 1500, desc: 'From' },
+      { name: 'Company profile and documentation', price: 500, desc: 'From' },
+      { name: 'Business proposal preparation', price: 750, desc: 'From' },
+      { name: 'Financial records setup', price: 500, desc: 'From' },
+      { name: 'Basic financial planning', price: 500, desc: 'From' }
+    ]
+  },
+  { 
+    category: 'E. BUNDLED SERVICE PACKAGES', 
+    items: [
+      { name: 'Business Name Registration Package', price: 350 },
+      { name: 'Limited Company Registration Package', price: 750 },
+      { name: 'Business Registration & Tax Setup Package', price: 850 },
+      { name: 'Business Registration & Licensing Coordination', price: 1500, desc: 'From' }
+    ]
+  }
 ];
 
 /* ─── CRM STATUSES ─── */
@@ -1864,7 +1898,10 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [items, setItems] = useState([{ desc: '', qty: 1, price: 0 }]);
+  const [customerBusiness, setCustomerBusiness] = useState('');
+  const [customerLocation, setCustomerLocation] = useState('');
+  
+  const [items, setItems] = useState([{ desc: '', govFee: 0, qty: 1, price: 0 }]);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [status, setStatus] = useState('Draft');
   const [validUntil, setValidUntil] = useState(new Date(Date.now() + 14 * 24 * 3600000).toISOString().split('T')[0]);
@@ -1873,23 +1910,25 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
     const id = e.target.value;
     setCustomerId(id);
     if (id === 'manual') {
-      setCustomerName(''); setCustomerEmail(''); setCustomerPhone('');
+      setCustomerName(''); setCustomerEmail(''); setCustomerPhone(''); setCustomerBusiness(''); setCustomerLocation('');
     } else {
       const lead = leads.find(l => l.id === id);
       if (lead) {
         setCustomerName(lead.name);
         setCustomerEmail(lead.email || '');
         setCustomerPhone(lead.phone || '');
+        setCustomerBusiness(lead.business !== '-' ? lead.business : '');
+        setCustomerLocation(lead.location || '');
       }
     }
   };
 
   const addCatalogueItem = (catIdx, itemIdx) => {
     const item = SERVICE_CATALOGUE[catIdx].items[itemIdx];
-    setItems([...items, { desc: `${item.name} - ${item.desc}`, qty: 1, price: item.price }]);
+    setItems([...items, { desc: `${item.name} ${item.desc ? '('+item.desc+')' : ''}`, govFee: 0, qty: 1, price: item.price }]);
   };
 
-  const addCustomItem = () => setItems([...items, { desc: '', qty: 1, price: 0 }]);
+  const addCustomItem = () => setItems([...items, { desc: '', govFee: 0, qty: 1, price: 0 }]);
 
   const updateItem = (index, field, value) => {
     const newItems = [...items];
@@ -1899,8 +1938,11 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
 
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
-  const subtotal = items.reduce((sum, item) => sum + (Number(item.qty) * Number(item.price)), 0);
-  const discountAmount = subtotal * (discountPercent / 100);
+  const subtotalGov = items.reduce((sum, item) => sum + (Number(item.govFee) * Number(item.qty)), 0);
+  const subtotalSE = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
+  const subtotal = subtotalGov + subtotalSE;
+  
+  const discountAmount = subtotalSE * (discountPercent / 100); // Discount applies only to SE fee
   const total = subtotal - discountAmount;
 
   const submit = (e) => {
@@ -1909,16 +1951,16 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
     if (items.length === 0 || !items[0].desc) return alert("Please add at least one item.");
     
     onSave({
-      quoteNumber: 'QT-' + Date.now().toString().slice(-6),
-      customerId, customerName, customerEmail, customerPhone,
-      items, subtotal, discountPercent, discountAmount, total,
+      quoteNumber: 'SEZ-QT-' + Date.now().toString().slice(-4),
+      customerId, customerName, customerEmail, customerPhone, customerBusiness, customerLocation,
+      items, subtotalGov, subtotalSE, subtotal, discountPercent, discountAmount, total,
       status, validUntil, createdAt: Date.now()
     });
   };
   
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card fadein" style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', overflowY: 'auto' }}>
+      <div className="card fadein" style={{ width: '100%', maxWidth: 850, maxHeight: '95vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 className="serif" style={{ fontSize: 24, margin: 0 }}>Create Quotation</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}><i className="fas fa-times"></i></button>
@@ -1939,7 +1981,9 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <div><label className="form-label">Name</label><input type="text" className="form-input" value={customerName} onChange={e => setCustomerName(e.target.value)} required /></div>
+              <div><label className="form-label">Customer Name</label><input type="text" className="form-input" value={customerName} onChange={e => setCustomerName(e.target.value)} required /></div>
+              <div><label className="form-label">Business Name</label><input type="text" className="form-input" value={customerBusiness} onChange={e => setCustomerBusiness(e.target.value)} /></div>
+              <div><label className="form-label">Location</label><input type="text" className="form-input" value={customerLocation} onChange={e => setCustomerLocation(e.target.value)} /></div>
               <div><label className="form-label">Email</label><input type="email" className="form-input" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} /></div>
               <div><label className="form-label">Phone</label><input type="text" className="form-input" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} /></div>
             </div>
@@ -1948,7 +1992,7 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
           {/* Line Items Section */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>Line Items</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>Itemised Service Costs</h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 <select className="select-sm" onChange={(e) => {
                   const [c, i] = e.target.value.split('-');
@@ -1972,9 +2016,10 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
               <thead>
                 <tr>
                   <th className="table-th">Description</th>
+                  <th className="table-th" style={{ width: 100 }}>Gov Fee (K)</th>
                   <th className="table-th" style={{ width: 80 }}>Qty</th>
-                  <th className="table-th" style={{ width: 120 }}>Price (K)</th>
-                  <th className="table-th" style={{ width: 100 }}>Total</th>
+                  <th className="table-th" style={{ width: 100 }}>SE Fee (K)</th>
+                  <th className="table-th" style={{ width: 100 }}>Line Total</th>
                   <th className="table-th" style={{ width: 40 }}></th>
                 </tr>
               </thead>
@@ -1982,9 +2027,10 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
                 {items.map((item, idx) => (
                   <tr key={idx}>
                     <td className="table-td" style={{ padding: 8 }}><input type="text" className="form-input" style={{ padding: 8 }} value={item.desc} onChange={e => updateItem(idx, 'desc', e.target.value)} required /></td>
+                    <td className="table-td" style={{ padding: 8 }}><input type="number" className="form-input" style={{ padding: 8 }} min="0" value={item.govFee} onChange={e => updateItem(idx, 'govFee', e.target.value)} required /></td>
                     <td className="table-td" style={{ padding: 8 }}><input type="number" className="form-input" style={{ padding: 8 }} min="1" value={item.qty} onChange={e => updateItem(idx, 'qty', e.target.value)} required /></td>
                     <td className="table-td" style={{ padding: 8 }}><input type="number" className="form-input" style={{ padding: 8 }} min="0" value={item.price} onChange={e => updateItem(idx, 'price', e.target.value)} required /></td>
-                    <td className="table-td" style={{ padding: 8, fontWeight: 800 }}>K{(item.qty * item.price).toLocaleString()}</td>
+                    <td className="table-td" style={{ padding: 8, fontWeight: 800 }}>K{((Number(item.govFee) + Number(item.price)) * Number(item.qty)).toLocaleString()}</td>
                     <td className="table-td" style={{ padding: 8, textAlign: 'center' }}><button type="button" onClick={() => removeItem(idx)} style={{ color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer' }}><i className="fas fa-trash"></i></button></td>
                   </tr>
                 ))}
@@ -2003,14 +2049,15 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
               <input type="date" className="form-input" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
             </div>
             <div style={{ background: '#F8FAFC', padding: 16, borderRadius: 8, border: '1px solid #E2E8F0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Subtotal</span><span style={{ fontWeight: 700 }}>K{subtotal.toLocaleString()}</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Total Gov Fees</span><span style={{ fontWeight: 700 }}>K{subtotalGov.toLocaleString()}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Total SE Fees</span><span style={{ fontWeight: 700 }}>K{subtotalSE.toLocaleString()}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderTop: '1px solid #E2E8F0', paddingTop: 8 }}>
                 <span style={{ color: '#64748B' }}>Discount (%)</span>
                 <input type="number" min="0" max="100" className="form-input" style={{ width: 80, padding: 4 }} value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: '#64748B' }}>Discount Amt</span><span style={{ fontWeight: 700, color: '#DC2626' }}>- K{discountAmount.toLocaleString()}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #0A1F12', paddingTop: 8, marginTop: 8 }}>
-                <span style={{ fontWeight: 800, fontSize: 16 }}>Total</span><span style={{ fontWeight: 800, fontSize: 18, color: '#1E7B3C' }}>K{total.toLocaleString()}</span>
+                <span style={{ fontWeight: 800, fontSize: 16 }}>Grand Total</span><span style={{ fontWeight: 800, fontSize: 18, color: '#1E7B3C' }}>K{total.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -2026,7 +2073,7 @@ function CreateQuotationModal({ onClose, onSave, leads }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   QUOTATION VIEWER MODAL
+   QUOTATION VIEWER MODAL (Adopted Template)
    ═══════════════════════════════════════════════════════════════════ */
 function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice }) {
   const generatePDF = () => {
@@ -2040,13 +2087,13 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice })
     }).from(element).save();
   };
 
-  const waMessage = `Hello ${quote.customerName},\n\nPlease find attached our quotation *${quote.quoteNumber}* for the total of *K${quote.total.toLocaleString()}*.\n\nLet us know if you have any questions.`;
+  const waMessage = `Hello ${quote.customerName},\n\nPlease find attached our quotation *${quote.quoteNumber}* for the grand total of *K${quote.total.toLocaleString()}*.\n\nLet us know if you have any questions.`;
   const waLink = quote.customerPhone ? `https://wa.me/${quote.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}` : null;
-  const mailLink = `mailto:${quote.customerEmail}?subject=Quotation ${quote.quoteNumber} from StartEasy&body=${encodeURIComponent(waMessage)}`;
+  const mailLink = `mailto:${quote.customerEmail}?subject=Service Quotation ${quote.quoteNumber} from StartEasy&body=${encodeURIComponent(waMessage)}`;
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,31,18,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card fadein no-print" style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="card fadein no-print" style={{ width: '100%', maxWidth: 850, maxHeight: '95vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 0 }}>
         
         {/* Toolbar */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, background: '#fff', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -2067,75 +2114,135 @@ function QuotationViewer({ quote, onClose, onUpdateStatus, onConvertToInvoice })
           </div>
         </div>
 
-        {/* Printable Area */}
-        <div style={{ padding: 40, background: '#fff' }}>
-          <div id="quotation-print-area" style={{ fontFamily: 'Inter, sans-serif', color: '#0A1F12' }}>
+        {/* Printable Area - Adopted Template */}
+        <div style={{ padding: '40px 50px', background: '#fff', fontFamily: 'Inter, sans-serif', color: '#0A1F12' }}>
+          <div id="quotation-print-area">
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #0A1F12', paddingBottom: 20, marginBottom: 20 }}>
-              <div>
-                <img src="Logo2.png" alt="StartEasy" style={{ height: 50, marginBottom: 8 }} onError={(e) => { e.target.style.display = 'none'; }} />
-                <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: '#E8730F' }}>StartEasy Zambia</h1>
-                <p style={{ fontSize: 12, margin: 0, color: '#64748B' }}>Lusaka, Zambia · +260 762 499 581</p>
-                <p style={{ fontSize: 12, margin: 0, color: '#64748B' }}>admin@starteasyzambia.com</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <h2 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 4px' }}>QUOTATION</h2>
-                <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{quote.quoteNumber}</p>
-                <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0' }}>Date: {fmtDate(quote.createdAt)}</p>
-                <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0' }}>Valid Until: {fmtDate(quote.validUntil)}</p>
-              </div>
+            {/* Header */}
+            <div style={{ textAlign: 'center', borderBottom: '3px solid #0A1F12', paddingBottom: 20, marginBottom: 20 }}>
+              <h1 className="serif" style={{ fontSize: 28, fontWeight: 800, margin: '0 0 4px', color: '#0A1F12' }}>STARTEASY ZAMBIA</h1>
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 4px', letterSpacing: '0.1em' }}>SERVICE QUOTATION</h2>
+              <p style={{ fontSize: 12, fontStyle: 'italic', color: '#64748B', margin: 0 }}>Making Business Easier.</p>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 8 }}>Prepared For:</h3>
-              <p style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px' }}>{quote.customerName}</p>
-              {quote.customerEmail && <p style={{ fontSize: 13, color: '#475569', margin: '0 0 2px' }}>{quote.customerEmail}</p>}
-              {quote.customerPhone && <p style={{ fontSize: 13, color: '#475569', margin: 0 }}>{quote.customerPhone}</p>}
+            {/* Quotation Details Table */}
+            <h3 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>QUOTATION DETAILS</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 13 }}>
+              <tbody>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B', width: '40%' }}>Quotation Number</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.quoteNumber}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Date Issued</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{fmtDate(quote.createdAt)}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Valid Until</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{fmtDate(quote.validUntil)}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Customer Name</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.customerName}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Business Name</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.customerBusiness || '—'}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Contact Number</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.customerPhone || '—'}</td></tr>
+                <tr><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', color: '#64748B' }}>Location</td><td style={{ padding: '6px 0', borderBottom: '1px solid #eee', fontWeight: 700 }}>{quote.customerLocation || '—'}</td></tr>
+              </tbody>
+            </table>
+
+            {/* 1. Service Description */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>1. SERVICE DESCRIPTION</h3>
+            <div style={{ background: '#F8FAFC', padding: 16, borderRadius: 8, marginBottom: 24, border: '1px solid #E2E8F0' }}>
+              <p style={{ fontWeight: 800, margin: '0 0 8px' }}>Package: Business Registration & Licensing</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>StartEasy Zambia will facilitate the business registration and applicable licensing processes to help the customer establish a legally registered and appropriately licensed business in Zambia.</p>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
+            {/* 2. Itemised Service Costs */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>2. ITEMISED SERVICE COSTS</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 12 }}>
               <thead>
-                <tr style={{ background: '#F8FAFC' }}>
-                  <th style={{ textAlign: 'left', padding: 12, fontSize: 11, textTransform: 'uppercase', color: '#64748B', borderBottom: '1px solid #E2E8F0' }}>Description</th>
-                  <th style={{ textAlign: 'center', padding: 12, fontSize: 11, textTransform: 'uppercase', color: '#64748B', borderBottom: '1px solid #E2E8F0' }}>Qty</th>
-                  <th style={{ textAlign: 'right', padding: 12, fontSize: 11, textTransform: 'uppercase', color: '#64748B', borderBottom: '1px solid #E2E8F0' }}>Price</th>
-                  <th style={{ textAlign: 'right', padding: 12, fontSize: 11, textTransform: 'uppercase', color: '#64748B', borderBottom: '1px solid #E2E8F0' }}>Total</th>
+                <tr style={{ background: '#0A1F12', color: '#fff' }}>
+                  <th style={{ textAlign: 'left', padding: 10 }}>No.</th>
+                  <th style={{ textAlign: 'left', padding: 10 }}>Service</th>
+                  <th style={{ textAlign: 'right', padding: 10 }}>Government / Third-party Fees (K)</th>
+                  <th style={{ textAlign: 'right', padding: 10 }}>StartEasy Service Fee (K)</th>
                 </tr>
               </thead>
               <tbody>
                 {quote.items.map((item, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: 12, fontSize: 13, borderBottom: '1px solid #F1F5F9' }}>{item.desc}</td>
-                    <td style={{ padding: 12, fontSize: 13, textAlign: 'center', borderBottom: '1px solid #F1F5F9' }}>{item.qty}</td>
-                    <td style={{ padding: 12, fontSize: 13, textAlign: 'right', borderBottom: '1px solid #F1F5F9' }}>K{Number(item.price).toLocaleString()}</td>
-                    <td style={{ padding: 12, fontSize: 13, textAlign: 'right', fontWeight: 700, borderBottom: '1px solid #F1F5F9' }}>K{(item.qty * item.price).toLocaleString()}</td>
+                  <tr key={i} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                    <td style={{ padding: 10 }}>{i + 1}</td>
+                    <td style={{ padding: 10 }}>{item.desc}</td>
+                    <td style={{ padding: 10, textAlign: 'right' }}>{(Number(item.govFee) * Number(item.qty)).toLocaleString()}</td>
+                    <td style={{ padding: 10, textAlign: 'right' }}>{(Number(item.price) * Number(item.qty)).toLocaleString()}</td>
                   </tr>
                 ))}
+                <tr style={{ background: '#F8FAFC', fontWeight: 800 }}>
+                  <td colSpan="2" style={{ padding: 10, textAlign: 'right' }}>Subtotal</td>
+                  <td style={{ padding: 10, textAlign: 'right' }}>{quote.subtotalGov.toLocaleString()}</td>
+                  <td style={{ padding: 10, textAlign: 'right' }}>{quote.subtotalSE.toLocaleString()}</td>
+                </tr>
               </tbody>
             </table>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <div style={{ width: 280 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 13 }}>
-                  <span style={{ color: '#64748B' }}>Subtotal</span>
-                  <span style={{ fontWeight: 700 }}>K{quote.subtotal.toLocaleString()}</span>
-                </div>
-                {quote.discountPercent > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 13 }}>
-                    <span style={{ color: '#64748B' }}>Discount ({quote.discountPercent}%)</span>
-                    <span style={{ fontWeight: 700, color: '#DC2626' }}>- K{quote.discountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #0A1F12', marginTop: 8 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15 }}>Total</span>
-                  <span style={{ fontWeight: 800, fontSize: 18, color: '#E8730F' }}>K{quote.total.toLocaleString()}</span>
-                </div>
+            {/* Quotation Summary */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+              <div style={{ width: '60%' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <tbody>
+                    <tr><td style={{ padding: '8px 0', borderBottom: '1px solid #eee' }}>Total Government / Third-party Fees</td><td style={{ padding: '8px 0', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: 700 }}>K {quote.subtotalGov.toLocaleString()}</td></tr>
+                    <tr><td style={{ padding: '8px 0', borderBottom: '1px solid #eee' }}>Total StartEasy Professional Fees</td><td style={{ padding: '8px 0', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: 700 }}>K {quote.subtotalSE.toLocaleString()}</td></tr>
+                    {quote.discountPercent > 0 && (
+                      <tr><td style={{ padding: '8px 0', borderBottom: '1px solid #eee', color: '#DC2626' }}>Discount ({quote.discountPercent}%)</td><td style={{ padding: '8px 0', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>- K {quote.discountAmount.toLocaleString()}</td></tr>
+                    )}
+                    <tr style={{ borderTop: '2px solid #0A1F12' }}>
+                      <td style={{ padding: '12px 0', fontWeight: 800, fontSize: 15 }}>GRAND TOTAL</td>
+                      <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 800, fontSize: 18, color: '#E8730F' }}>K {quote.total.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid #E2E8F0', fontSize: 11, color: '#64748B', textAlign: 'center' }}>
-              <p style={{ margin: '0 0 4px' }}>Thank you for choosing StartEasy Zambia.</p>
-              <p style={{ margin: 0 }}>This quotation is valid until {fmtDate(quote.validUntil)}.</p>
+            {/* 3. Scope of Services */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>3. SCOPE OF SERVICES</h3>
+            <p style={{ fontSize: 12, margin: '0 0 8px' }}>The service includes:</p>
+            <ul style={{ fontSize: 12, paddingLeft: 20, margin: '0 0 24px', lineHeight: 1.6 }}>
+              <li>Initial customer consultation and requirements assessment.</li>
+              <li>Assistance with company registration documentation.</li>
+              <li>Facilitation of applicable tax registration.</li>
+              <li>Assessment and facilitation of applicable environmental approval requirements.</li>
+              <li>Identification and facilitation of relevant local council licensing requirements.</li>
+              <li>Application follow-ups and progress updates.</li>
+              <li>Handover of available registration documents and certificates.</li>
+            </ul>
+
+            {/* 4. Terms and Conditions */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>4. TERMS AND CONDITIONS</h3>
+            <ol style={{ fontSize: 12, paddingLeft: 20, margin: '0 0 24px', lineHeight: 1.6 }}>
+              <li>This quotation is based on the information provided by the customer.</li>
+              <li>Government and regulatory fees are subject to the applicable official fee schedules.</li>
+              <li>ZEMA and council requirements depend on the nature, location and scale of the proposed business.</li>
+              <li>Services not expressly listed in this quotation are excluded.</li>
+              <li>Additional permits, inspections, specialist assessments and third-party charges will be quoted separately where necessary.</li>
+              <li>Processing timelines depend on the relevant government authorities and are not guaranteed by StartEasy Zambia.</li>
+              <li>Work commences upon quotation acceptance and receipt of the agreed initial payment.</li>
+            </ol>
+            <p style={{ fontSize: 12, fontWeight: 800, marginBottom: 24 }}>Quotation Validity: 14 days from the date of issue.</p>
+
+            {/* 5. Payment Details */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>5. PAYMENT DETAILS</h3>
+            <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 32 }}>
+              <p style={{ margin: 0 }}><strong>Payment Terms:</strong> 50% Commencement, 50% on Completion.</p>
+              <p style={{ margin: 0 }}><strong>Payment Methods:</strong> Airtel Money, MTN MoMo, Bank Transfer.</p>
+            </div>
+
+            {/* 6. Customer Acceptance */}
+            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>6. CUSTOMER ACCEPTANCE</h3>
+            <p style={{ fontSize: 12, margin: '0 0 24px' }}>I confirm that I have reviewed and accepted the services, costs and terms outlined in this quotation.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 40 }}>
+              <div style={{ borderBottom: '1px solid #333', paddingBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#666', marginTop: 24 }}>Customer Name</div>
+              </div>
+              <div style={{ borderBottom: '1px solid #333', paddingBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#666', marginTop: 24 }}>Signature & Date</div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ textAlign: 'center', borderTop: '2px solid #0A1F12', paddingTop: 16, fontSize: 11, color: '#64748B' }}>
+              <p style={{ fontWeight: 800, color: '#0A1F12', margin: '0 0 4px' }}>STARTEASY ZAMBIA ADMIN SERVICES LIMITED</p>
+              <p style={{ fontStyle: 'italic', margin: '0 0 8px' }}>Your Business Support & Venture Development Partner.</p>
+              <p style={{ margin: 0 }}>Website: www.starteasyzambia.com | Email: admin@starteasyzambia.com | Phone: +260 762 499 581</p>
             </div>
 
           </div>
@@ -2204,10 +2311,7 @@ function AdminPortal({ onExit }) {
       await db.collection('se_leads').doc(id).update(updates);
       setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
       if (selectedLead && selectedLead.id === id) setSelectedLead({ ...selectedLead, ...updates });
-    } catch (err) { 
-      console.error(err); 
-      alert("Failed to update lead: " + err.message); 
-    }
+    } catch (err) { console.error(err); alert("Failed to update lead: " + err.message); }
   };
 
   const deleteLead = async (id) => {
@@ -2215,60 +2319,41 @@ function AdminPortal({ onExit }) {
       await db.collection('se_leads').doc(id).delete();
       setSelectedLead(null);
       setLeads(prev => prev.filter(l => l.id !== id));
-    } catch (err) { 
-      console.error(err);
-      alert("Failed to delete lead: " + err.message); 
-    }
+    } catch (err) { alert("Failed to delete lead: " + err.message); }
   };
 
   const createManualLead = async (data) => {
-    try { 
-      await db.collection('se_leads').add(data); 
-      setShowCreateLead(false); 
-    } catch (err) { 
-      console.error(err);
-      alert("Failed to add lead: " + err.message); 
-    }
+    try { await db.collection('se_leads').add(data); setShowCreateLead(false); } catch (err) { alert("Failed to add lead: " + err.message); }
   };
 
   const createOrder = async (data) => {
-    try { 
-      await db.collection('se_orders').add(data); 
-      setShowCreateOrder(false); 
-    } catch (err) { 
-      console.error(err);
-      alert("Failed to create order: " + err.message); 
-    }
+    try { await db.collection('se_orders').add(data); setShowCreateOrder(false); } catch (err) { alert("Failed to create order: " + err.message); }
   };
 
   const createTicket = async (data) => {
-    try { 
-      await db.collection('se_tickets').add(data); 
-      setShowCreateTicket(false); 
-    } catch (err) { 
-      console.error(err);
-      alert("Failed to log ticket: " + err.message); 
-    }
+    try { await db.collection('se_tickets').add(data); setShowCreateTicket(false); } catch (err) { alert("Failed to log ticket: " + err.message); }
   };
 
   const createQuote = async (data) => {
-    try { 
-      await db.collection('se_quotations').add(data); 
-      setShowCreateQuote(false); 
-    } catch (err) { 
-      console.error(err);
-      alert("Failed to save quotation: " + err.message); 
-    }
+    try { await db.collection('se_quotations').add(data); setShowCreateQuote(false); } catch (err) { alert("Failed to save quotation: " + err.message); }
   };
 
   const updateOrderStatus = async (id, newStatus) => {
-    try { await db.collection('se_orders').doc(id).update({ status: newStatus }); } 
-    catch (e) { alert("Failed: " + e.message); }
+    try { await db.collection('se_orders').doc(id).update({ status: newStatus }); } catch (e) { alert("Failed: " + e.message); }
+  };
+
+  const deleteOrder = async (id) => {
+    if (!window.confirm("Delete this order permanently?")) return;
+    try { await db.collection('se_orders').doc(id).delete(); } catch (e) { alert("Failed to delete: " + e.message); }
   };
 
   const updateTicketStatus = async (id, newStatus) => {
-    try { await db.collection('se_tickets').doc(id).update({ status: newStatus }); } 
-    catch (e) { alert("Failed: " + e.message); }
+    try { await db.collection('se_tickets').doc(id).update({ status: newStatus }); } catch (e) { alert("Failed: " + e.message); }
+  };
+
+  const deleteTicket = async (id) => {
+    if (!window.confirm("Delete this support ticket permanently?")) return;
+    try { await db.collection('se_tickets').doc(id).delete(); } catch (e) { alert("Failed to delete: " + e.message); }
   };
 
   const updateQuoteStatus = async (id, newStatus) => {
@@ -2276,6 +2361,14 @@ function AdminPortal({ onExit }) {
       await db.collection('se_quotations').doc(id).update({ status: newStatus });
       if (selectedQuote && selectedQuote.id === id) setSelectedQuote({ ...selectedQuote, status: newStatus });
     } catch (e) { alert("Failed: " + e.message); }
+  };
+
+  const deleteQuote = async (id) => {
+    if (!window.confirm("Delete this quotation permanently?")) return;
+    try { 
+      await db.collection('se_quotations').doc(id).delete(); 
+      if (selectedQuote && selectedQuote.id === id) setSelectedQuote(null);
+    } catch (e) { alert("Failed to delete: " + e.message); }
   };
 
   const convertQuoteToInvoice = async (quote) => {
@@ -2288,7 +2381,7 @@ function AdminPortal({ onExit }) {
         status: 'Pending',
         createdAt: Date.now()
       });
-      await updateQuoteStatus(quote.id, 'Accepted'); // Ensure it's marked accepted
+      await updateQuoteStatus(quote.id, 'Accepted');
       alert('Successfully converted to an Invoice/Order!');
       setSelectedQuote(null);
       setActiveTab('orders');
@@ -2767,7 +2860,7 @@ function AdminPortal({ onExit }) {
                         <th className="table-th">Date</th>
                         <th className="table-th">Total</th>
                         <th className="table-th">Status</th>
-                        <th className="table-th">Action</th>
+                        <th className="table-th" style={{ textAlign: 'center' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2782,7 +2875,10 @@ function AdminPortal({ onExit }) {
                             <td className="table-td" style={{ fontSize: 12 }}>{fmtDate(q.createdAt)}</td>
                             <td className="table-td" style={{ fontWeight: 800, color: '#1E7B3C' }}>K{q.total.toLocaleString()}</td>
                             <td className="table-td"><span className={`status-badge ${st.color}`}>{st.label}</span></td>
-                            <td className="table-td" style={{ fontSize: 13, color: '#E8730F', fontWeight: 600 }}>View</td>
+                            <td className="table-td" style={{ textAlign: 'center', display: 'flex', gap: 10, justifyContent: 'center' }}>
+                              <span style={{ fontSize: 13, color: '#E8730F', fontWeight: 600 }}>View</span>
+                              <button onClick={(e) => { e.stopPropagation(); deleteQuote(q.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}><i className="fas fa-trash-alt"></i></button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -2809,9 +2905,9 @@ function AdminPortal({ onExit }) {
                         <div key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ flex: 1, paddingRight: 16 }}>
                             <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
-                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{item.desc}</div>
+                            {item.note && <div style={{ fontSize: 11, color: '#E8730F', marginTop: 2 }}>{item.note}</div>}
                           </div>
-                          <div style={{ fontWeight: 800, color: '#1E7B3C', fontSize: 14 }}>K{item.price.toLocaleString()}</div>
+                          <div style={{ fontWeight: 800, color: '#1E7B3C', fontSize: 14 }}>{item.desc ? item.desc + ' ' : ''}K{item.price.toLocaleString()}</div>
                         </div>
                       ))}
                     </div>
@@ -2842,11 +2938,12 @@ function AdminPortal({ onExit }) {
                         <th className="table-th">Created</th>
                         <th className="table-th">Status</th>
                         <th className="table-th">Update Status</th>
+                        <th className="table-th" style={{ textAlign: 'center' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {orders.length === 0 ? (
-                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No orders yet. Convert a lead and create an order.</td></tr>
+                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No orders yet. Convert a lead and create an order.</td></tr>
                       ) : orders.map(order => (
                         <tr key={order.id}>
                           <td className="table-td" style={{ fontWeight: 700 }}>{order.customerName}</td>
@@ -2861,6 +2958,9 @@ function AdminPortal({ onExit }) {
                               <option value="Delivered">Delivered</option>
                               <option value="Cancelled">Cancelled</option>
                             </select>
+                          </td>
+                          <td className="table-td" style={{ textAlign: 'center' }}>
+                            <button onClick={() => deleteOrder(order.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}><i className="fas fa-trash-alt"></i></button>
                           </td>
                         </tr>
                       ))}
@@ -2910,6 +3010,7 @@ function AdminPortal({ onExit }) {
                               <option value="In Progress">In Progress</option>
                               <option value="Resolved">Resolved</option>
                             </select>
+                            <button onClick={() => deleteTicket(ticket.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', marginLeft: 8 }}><i className="fas fa-trash-alt"></i></button>
                           </td>
                         </tr>
                       ))}
